@@ -1,0 +1,150 @@
+{% extends 'base.html' %}
+{% block title %}{{ survey.title }} - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('surveys.index') }}" class="btn-link text-decoration-none">&larr; Back</a>
+        <h4 class="fw-bold mb-0 mt-2">{{ survey.title }}</h4>
+        <span class="badge bg-light border text-dark">{{ survey.category }}</span>
+        <span class="badge {% if survey.status == 'Active' %}bg-success{% else %}bg-secondary{% endif %}">{{ survey.status }}</span>
+        {% if survey.description %}<p class="text-muted small mt-2 mb-0">{{ survey.description }}</p>{% endif %}
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('surveys.collect', survey_id=survey.id) }}" class="btn btn-primary"><i class="bi bi-pencil-square"></i> Collect Data</a>
+        <a href="{{ url_for('surveys.edit_survey', survey_id=survey.id) }}" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Edit</a>
+        <form method="POST" action="{{ url_for('surveys.delete_survey', survey_id=survey.id) }}" onsubmit="return confirm('Delete this survey and all its submissions?');">
+            <button class="btn btn-outline-danger"><i class="bi bi-trash"></i></button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ submissions|length }}</div>
+            <div class="label">Submissions</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ survey.questions|length }}</div>
+            <div class="label">Questions</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ scale_rows|length }}</div>
+            <div class="label">Scaled Indicators</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">{{ '{:.2f}'.format(overall) if overall is not none else '—' }}</div>
+            <div class="label">Overall Mean (1-5)</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Average Scores by Indicator</h6>
+            {% if scale_rows %}
+            <div id="scoresChart"></div>
+            {% else %}
+            <p class="text-muted mb-0">No scaled responses yet.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Locations Visited</h6>
+            {% if locations %}
+            <div id="locationsChart"></div>
+            {% else %}
+            <p class="text-muted mb-0">No location data yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Field Submissions</h6>
+        <span class="text-muted small">{{ submissions|length }} records</span>
+    </div>
+    {% if submissions_decoded %}
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Respondent</th>
+                    <th>Location</th>
+                    <th>Submitted</th>
+                    <th>Summary</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in submissions_decoded %}
+                <tr>
+                    <td>{{ row.sub.id }}</td>
+                    <td>{{ row.sub.respondent_name or '—' }}</td>
+                    <td>{{ row.sub.location or '—' }}</td>
+                    <td class="small text-muted">{{ row.sub.submitted_at.strftime('%b %d, %Y %H:%M') }}</td>
+                    <td class="small">
+                        {% for q in survey.questions %}
+                            {% set val = row.data.get(q.id|string) %}
+                            {% if q.question_type != 'text' and val is not none %}
+                                <span class="badge bg-light border text-dark">{{ q.question_text[:24] }}: {{ val }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        <form method="POST" action="{{ url_for('surveys.delete_submission', survey_id=survey.id, sub_id=row.sub.id) }}" onsubmit="return confirm('Delete this submission?');">
+                            <button class="btn btn-sm btn-link text-danger"><i class="bi bi-x-lg"></i></button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center text-muted">No submissions yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="text-muted mb-0">No submissions recorded yet.</p>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const scaleRows = {{ scale_rows | tojson }};
+const locCounts = {{ locations | tojson }};
+if (scaleRows.length) {
+    new ApexCharts(document.querySelector("#scoresChart"), {
+        chart: { type: "bar", height: 300, toolbar: { show: false } },
+        series: [{ name: "Mean Score", data: scaleRows.map(r => r.mean) }],
+        plotOptions: { bar: { borderRadius: 4, columnWidth: "45%" } },
+        dataLabels: { enabled: true },
+        xaxis: { categories: scaleRows.map(r => r.label.slice(0, 30) + (r.label.length > 30 ? '…' : '')), labels: { style: { fontSize: "10px" } } },
+        yaxis: { min: 0, max: 5, tickAmount: 5 }
+    }).render();
+}
+if (Object.keys(locCounts).length) {
+    new ApexCharts(document.querySelector("#locationsChart"), {
+        chart: { type: "pie", height: 300 },
+        labels: Object.keys(locCounts),
+        series: Object.values(locCounts),
+        legend: { position: "bottom" }
+    }).render();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,36 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}Accomplishment Reports{% endblock %}
+{% block header_title %}Accomplishment Reports{% endblock %}
+{% block report_content %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Report Title</th>
+            <th>Project</th>
+            <th>Beneficiaries</th>
+            <th>Volunteers</th>
+            <th>Report Date</th>
+            <th>Submitted By</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for r in reports %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>
+                {{ r.title }}
+                {% if r.summary %}<br><small class="text-muted">{{ r.summary }}</small>{% endif %}
+            </td>
+            <td>{{ r.project.title if r.project else '—' }}</td>
+            <td>{{ r.beneficiaries_served }}</td>
+            <td>{{ r.volunteers }}</td>
+            <td>{{ r.report_date.strftime('%b %d, %Y') if r.report_date else '—' }}</td>
+            <td>{{ r.submitted_by or '—' }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No reports found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

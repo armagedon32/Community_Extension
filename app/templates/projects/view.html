@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% block title %}{{ project.title }} - CELMIS{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('projects.list_projects') }}"><i class="bi bi-arrow-left"></i> Back to Projects</a>
+</div>
+
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <h4 class="fw-bold mb-1">{{ project.title }}</h4>
+        <div class="d-flex gap-2 align-items-center">
+            <span class="badge text-bg-light border">{{ project.category }}</span>
+            {% if project.status == 'Ongoing' %}<span class="badge text-bg-warning">Ongoing</span>
+            {% elif project.status == 'Completed' %}<span class="badge text-bg-success">Completed</span>
+            {% else %}<span class="badge text-bg-secondary">Proposed</span>{% endif %}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('projects.edit_project', project_id=project.id) }}" class="btn btn-outline-secondary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#progressModal"><i class="bi bi-sliders"></i> Update Progress</button>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card p-4 mb-3">
+            <h6 class="fw-bold mb-3">Description</h6>
+            <p class="text-muted">{{ project.description or 'No description provided.' }}</p>
+            <hr>
+            <div class="row text-center">
+                <div class="col-3"><div class="text-muted small">Start</div><div class="fw-semibold">{{ project.start_date.strftime('%b %d, %Y') if project.start_date else '—' }}</div></div>
+                <div class="col-3"><div class="text-muted small">End</div><div class="fw-semibold">{{ project.end_date.strftime('%b %d, %Y') if project.end_date else '—' }}</div></div>
+                <div class="col-3"><div class="text-muted small">Leader</div><div class="fw-semibold">{{ project.leader.full_name if project.leader else '—' }}</div></div>
+                <div class="col-3"><div class="text-muted small">Budget</div><div class="fw-semibold">&#8369; {{ "{:,.2f}".format(project.budget or 0) }}</div></div>
+            </div>
+        </div>
+
+        <div class="card p-4 mb-3">
+            <h6 class="fw-bold mb-3">Accomplishment Reports</h6>
+            {% for r in reports %}
+            <div class="border rounded p-3 mb-2">
+                <div class="d-flex justify-content-between">
+                    <strong>{{ r.title }}</strong>
+                    <span class="small text-muted">{{ r.report_date.strftime('%b %d, %Y') }}</span>
+                </div>
+                <div class="small mt-2">
+                    <span class="badge text-bg-light border">{{ r.beneficiaries_served }} beneficiaries</span>
+                    <span class="badge text-bg-light border">{{ r.volunteers }} volunteers</span>
+                </div>
+                {% if r.summary %}<p class="mt-2 mb-0 text-muted small">{{ r.summary }}</p>{% endif %}
+            </div>
+            {% else %}
+            <p class="text-muted">No accomplishment reports yet.</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card p-4 mb-3">
+            <h6 class="fw-bold mb-2">Project Progress</h6>
+            <div class="d-flex align-items-center gap-3">
+                <div class="progress flex-grow-1" style="height: 12px;">
+                    <div class="progress-bar bg-primary" style="width: {{ project.progress }}%"></div>
+                </div>
+                <span class="fw-bold">{{ project.progress }}%</span>
+            </div>
+        </div>
+        <div class="card p-4 mb-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-bold mb-0">Beneficiaries</h6>
+                <span class="badge text-bg-primary">{{ beneficiaries|length }}</span>
+            </div>
+            {% for b in beneficiaries %}
+            <div class="d-flex justify-content-between border-bottom py-1 small">
+                <span>{{ b.full_name }}</span><span class="text-muted">{{ b.segment or '—' }}</span>
+            </div>
+            {% else %}
+            <p class="text-muted small mb-0">No beneficiaries selected.</p>
+            {% endfor %}
+        </div>
+        <div class="card p-4">
+            <h6 class="fw-bold mb-2">Linked MOAs</h6>
+            {% for m in moas %}
+            <div class="small py-1">{{ m.title }} <span class="badge text-bg-light border">{{ m.status }}</span></div>
+            {% else %}
+            <p class="text-muted small mb-0">No MOAs linked.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="progressModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('projects.edit_project', project_id=project.id) }}">
+                <div class="modal-header">
+                    <h5 class="modal-title">Update Progress</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="title" value="{{ project.title }}">
+                    <input type="hidden" name="category" value="{{ project.category }}">
+                    <input type="hidden" name="status" value="{{ project.status }}">
+                    <input type="hidden" name="leader_id" value="{{ project.leader_id or '' }}">
+                    <input type="hidden" name="start_date" value="{{ project.start_date.isoformat() if project.start_date else '' }}">
+                    <input type="hidden" name="end_date" value="{{ project.end_date.isoformat() if project.end_date else '' }}">
+                    <input type="hidden" name="budget" value="{{ project.budget or 0 }}">
+                    <input type="hidden" name="location" value="{{ project.location or '' }}">
+                    <input type="hidden" name="description" value="{{ project.description or '' }}">
+                    <label class="form-label">Progress (%)</label>
+                    <select name="progress" class="form-select">
+                        {% for v in progress_values %}
+                        <option value="{{ v }}" {% if project.progress == v %}selected{% endif %}>{{ v }}%</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

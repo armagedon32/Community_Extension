@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Database
+celmis.db
+*.sqlite
+*.sqlite3
+*.db
+
+# ML model artifacts (re-trained on boot)
+app/ml/models/*.joblib
+app/ml/models/*.json
+
+# Uploads / user files
+app/static/uploads/
+
+# Logs & temp
+*.log
+.DS_Store
+Thumbs.db
+.env

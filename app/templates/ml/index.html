@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% block title %}Machine Learning Lab - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Machine Learning Lab</h4>
+        <span class="text-muted small">NLP + Naive Bayes — classifies document type AND project category</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('ml.list_documents') }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-text"></i> Documents</a>
+        <form method="POST" action="{{ url_for('ml.train_model') }}">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-gear"></i> Train Naive Bayes</button>
+        </form>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ doc_count }}</div>
+            <div class="label">Total Documents</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ labeled }}</div>
+            <div class="label">Labeled Type Docs</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ domain_count }}</div>
+            <div class="label">Labeled Domains</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">{{ models|length }}</div>
+            <div class="label">Model Runs</div>
+        </div>
+    </div>
+</div>
+
+{% macro model_card(title, latest, chart, desc) %}
+<div class="col-lg-6">
+    <div class="card p-4 h-100">
+        <h6 class="fw-bold mb-1">{{ title }}</h6>
+        <span class="text-muted small mb-3">{{ desc }}</span>
+        {% if latest %}
+        <div class="row text-center g-3">
+            <div class="col-3">
+                <div class="display-6 fw-bold text-primary">{{ '%.1f'|format((latest.accuracy or 0) * 100) }}%</div>
+                <div class="text-muted small">Accuracy</div>
+            </div>
+            <div class="col-3">
+                <div class="display-6 fw-bold text-success">{{ '%.1f'|format((latest.precision or 0) * 100) }}%</div>
+                <div class="text-muted small">Precision</div>
+            </div>
+            <div class="col-3">
+                <div class="display-6 fw-bold text-info">{{ '%.1f'|format((latest.recall or 0) * 100) }}%</div>
+                <div class="text-muted small">Recall</div>
+            </div>
+            <div class="col-3">
+                <div class="display-6 fw-bold text-warning">{{ '%.1f'|format((latest.f1 or 0) * 100) }}%</div>
+                <div class="text-muted small">F1-Score</div>
+            </div>
+        </div>
+        <hr>
+        <div class="small text-muted">
+            <div>Classes: <strong>{{ latest.classes }}</strong></div>
+            <div>Training samples: <strong>{{ latest.samples }}</strong></div>
+            <div>Trained: <strong>{{ latest.created_at.strftime('%b %d, %Y %H:%M') }}</strong></div>
+        </div>
+        <hr>
+        <h6 class="fw-bold mb-2">Confusion Matrix</h6>
+        {% if chart and chart.confusion_matrix %}
+        <div id="cm_{{ loop.index }}"></div>
+        {% else %}
+        <p class="text-muted mb-0">Confusion matrix will appear after training.</p>
+        {% endif %}
+        {% else %}
+        <p class="text-muted mb-0">Not trained yet. Add labeled documents then click <strong>Train Naive Bayes</strong>.</p>
+        {% endif %}
+    </div>
+</div>
+{% endmacro %}
+
+<div class="row g-3 mb-4">
+    {% set ns = namespace(idx=0) %}
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-1">Document Type Model</h6>
+            <span class="text-muted small mb-3">Proposal / Activity Design / Accomplishment / M&amp;E / MOA / Feedback</span>
+            {% if latest %}
+            <div class="row text-center g-3">
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-primary">{{ '%.1f'|format((latest.accuracy or 0) * 100) }}%</div>
+                    <div class="text-muted small">Accuracy</div>
+                </div>
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-success">{{ '%.1f'|format((latest.precision or 0) * 100) }}%</div>
+                    <div class="text-muted small">Precision</div>
+                </div>
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-info">{{ '%.1f'|format((latest.recall or 0) * 100) }}%</div>
+                    <div class="text-muted small">Recall</div>
+                </div>
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-warning">{{ '%.1f'|format((latest.f1 or 0) * 100) }}%</div>
+                    <div class="text-muted small">F1-Score</div>
+                </div>
+            </div>
+            <hr>
+            <div class="small text-muted">
+                <div>Classes: <strong>{{ latest.classes }}</strong></div>
+                <div>Training samples: <strong>{{ latest.samples }}</strong></div>
+                <div>Trained: <strong>{{ latest.created_at.strftime('%b %d, %Y %H:%M') }}</strong></div>
+            </div>
+            <hr>
+            <h6 class="fw-bold mb-2">Confusion Matrix</h6>
+            {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
+            {% else %}
+            <p class="text-muted mb-0">Not trained yet. Add labeled documents then click <strong>Train Naive Bayes</strong>.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-1">Project Category Model</h6>
+            <span class="text-muted small mb-3">Education / Livelihood / Governance / Environment / Health / etc.</span>
+            {% if latest_domain %}
+            <div class="row text-center g-3">
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-primary">{{ '%.1f'|format((latest_domain.accuracy or 0) * 100) }}%</div>
+                    <div class="text-muted small">Accuracy</div>
+                </div>
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-success">{{ '%.1f'|format((latest_domain.precision or 0) * 100) }}%</div>
+                    <div class="text-muted small">Precision</div>
+                </div>
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-info">{{ '%.1f'|format((latest_domain.recall or 0) * 100) }}%</div>
+                    <div class="text-muted small">Recall</div>
+                </div>
+                <div class="col-3">
+                    <div class="display-6 fw-bold text-warning">{{ '%.1f'|format((latest_domain.f1 or 0) * 100) }}%</div>
+                    <div class="text-muted small">F1-Score</div>
+                </div>
+            </div>
+            <hr>
+            <div class="small text-muted">
+                <div>Classes: <strong>{{ latest_domain.classes }}</strong></div>
+                <div>Training samples: <strong>{{ latest_domain.samples }}</strong></div>
+                <div>Trained: <strong>{{ latest_domain.created_at.strftime('%b %d, %Y %H:%M') }}</strong></div>
+            </div>
+            <hr>
+            <h6 class="fw-bold mb-2">Confusion Matrix</h6>
+            {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
+            {% else %}
+            <p class="text-muted mb-0">Not trained yet. Add at least 3 documents with a project category/domain label.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Classification Dimensions</h6>
+            <div class="mb-3">
+                <span class="badge text-bg-primary mb-1">Document Type</span>
+                <div class="small text-muted">Proposal, Activity Design, Accomplishment Report, M&amp;E Report, MOA, Stakeholder Feedback</div>
+            </div>
+            <div class="mb-3">
+                <span class="badge text-bg-info mb-1">Project Category / Domain</span>
+                <div class="small text-muted">Education, Livelihood, Governance, Environment, Health, Technology, Community Outreach, Research, Other</div>
+            </div>
+            <hr>
+            <p class="small text-muted mb-0">
+                Workflow: Document → Text Preprocessing (Tokenization, Stop-word Removal, Normalization) → TF-IDF Feature Extraction → Naive Bayes Classification → <strong>Document Type</strong> + <strong>Project Category</strong> outputs.
+            </p>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Model Registry</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr><th>Name</th><th>Accuracy</th><th>F1</th><th>Date</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for m in models %}
+                        <tr>
+                            <td class="small">{{ m.name }}</td>
+                            <td>{{ '%.1f'|format((m.accuracy or 0) * 100) }}%</td>
+                            <td>{{ '%.1f'|format((m.f1 or 0) * 100) }}%</td>
+                            <td class="small text-muted">{{ m.created_at.strftime('%b %d, %Y') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No model runs recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function renderHeatmap(sel, classes, cm) {
+    if (!classes || !cm) return;
+    new ApexCharts(document.querySelector(sel), {
+        chart: { type: "heatmap", height: 300, toolbar: { show: false } },
+        series: classes.map((cls, i) => ({
+            name: cls,
+            data: cm[i].map((val, j) => ({ x: classes[j], y: val }))
+        })),
+        plotOptions: {
+            heatmap: {
+                radius: 3,
+                colorScale: { ranges: [
+                    { from: 0, to: 0, color: "#f8fafc" },
+                    { from: 1, to: 2, color: "#93c5fd" },
+                    { from: 3, to: 5, color: "#3b82f6" },
+                    { from: 6, to: 999, color: "#1a4d8f" }
+                ]}
+            }
+        },
+        dataLabels: { enabled: true },
+        xaxis: { labels: { style: { fontSize: "10px" } } },
+        yaxis: { labels: { style: { fontSize: "10px" } } }
+    }).render();
+}
+{% if chart and chart.confusion_matrix %}
+renderHeatmap("#cmType", {{ chart.classes | tojson }}, {{ chart.confusion_matrix | tojson }});
+{% endif %}
+{% if chart_domain and chart_domain.confusion_matrix %}
+renderHeatmap("#cmDomain", {{ chart_domain.classes | tojson }}, {{ chart_domain.confusion_matrix | tojson }});
+{% endif %}
+</script>
+{% endblock %}

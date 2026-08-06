@@ -1,0 +1,9 @@
+# TRAINING DATA: fill in BOTH category (document type) and domain (project category).
+# The AI learns from these labels. Put only documents you already know the correct answer for.
+title,category,domain,content
+Sample Project Proposal,Project Proposal,Education,This is a sample project proposal seeking funding for a community literacy program. It includes objectives, a proposed budget, and an implementation timeline. The extension office submitted this proposal for approval and support.
+Sample Activity Design,Activity Design,Health,The activity design outlines the schedule and logistics for a one-day health outreach caravan. It specifies the venue, staffing requirements, volunteer stations, and health protocols to be followed during the activity.
+Sample Accomplishment Report,Accomplishment Report,Education,The accomplishment report documents the completed extension activities for the quarter. A total of 200 beneficiaries learning literacy were served by faculty volunteers. All scheduled activities were accomplished within the approved budget.
+Sample M&E Report,Monitoring and Evaluation Report,Health,The monitoring and evaluation report assesses the implementation of the nutrition program. Baseline data was collected and follow-up measurements show improvement in the indicators. Recommendations are included for the next phase.
+Sample MOA,Memorandum of Agreement,Governance,This memorandum of agreement establishes a partnership between the university and the municipal government for joint extension collaboration under the local governance framework including resource sharing and shared monitoring of programs.
+Sample Stakeholder Feedback,Stakeholder Feedback,Livelihood,Respondents of the livelihood training outreach expressed satisfaction with the income assistance rendered. They requested additional business sessions and more livelihood opportunities. Overall feedback was positive.

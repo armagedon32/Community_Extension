@@ -1,0 +1,47 @@
+<aside class="sidebar">
+    <div class="brand">
+        <i class="bi bi-broadcast-pin"></i>
+        <span>CELMIS</span>
+    </div>
+    <nav class="nav flex-column">
+        <div class="nav-section">Main</div>
+        <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
+            <i class="bi bi-speedometer2"></i> Dashboard
+        </a>
+        <div class="nav-section">Operations</div>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('projects.') %}active{% endif %}" href="{{ url_for('projects.list_projects') }}">
+            <i class="bi bi-folder2-open"></i> Projects
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('beneficiaries.') %}active{% endif %}" href="{{ url_for('beneficiaries.list_beneficiaries') }}">
+            <i class="bi bi-people"></i> Beneficiaries
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('partners.') %}active{% endif %}" href="{{ url_for('partners.list_partners') }}">
+            <i class="bi bi-building"></i> Partners & Linkages
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('activities.') %}active{% endif %}" href="{{ url_for('activities.list_activities') }}">
+            <i class="bi bi-calendar-event"></i> Activities
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('moas.') %}active{% endif %}" href="{{ url_for('moas.list_moas') }}">
+            <i class="bi bi-file-earmark-text"></i> MOA
+        </a>
+        <div class="nav-section">Analytics</div>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}">
+            <i class="bi bi-graph-up"></i> Reports
+        </a>
+        <div class="nav-section">AI & Evaluation</div>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ml.') %}active{% endif %}" href="{{ url_for('ml.dashboard') }}">
+            <i class="bi bi-cpu"></i> Machine Learning Lab
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('evaluations.') %}active{% endif %}" href="{{ url_for('evaluations.results') }}">
+            <i class="bi bi-clipboard-data"></i> ISO 25010 Evaluation
+        </a>
+        <div class="nav-section">Finance</div>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finance.') %}active{% endif %}" href="{{ url_for('finance.dashboard') }}">
+            <i class="bi bi-wallet2"></i> Contribution Funds
+        </a>
+        <div class="nav-section">Data Collection</div>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('surveys.') %}active{% endif %}" href="{{ url_for('surveys.index') }}">
+            <i class="bi bi-clipboard-check"></i> MISP-A Surveys
+        </a>
+    </nav>
+</aside>

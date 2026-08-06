@@ -1,0 +1,33 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}Beneficiaries Report{% endblock %}
+{% block header_title %}Community Beneficiaries Report{% endblock %}
+{% block report_content %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Segment</th>
+            <th>Age / Sex</th>
+            <th>Address</th>
+            <th>Group</th>
+            <th>Project</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for b in beneficiaries %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ b.full_name }}</td>
+            <td>{{ b.segment or '—' }}</td>
+            <td>{{ b.age or '—' }} / {{ b.sex or '—' }}</td>
+            <td>{{ b.address or '—' }}</td>
+            <td>{{ b.group.name if b.group else '—' }}</td>
+            <td>{{ b.project.title if b.project else '—' }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No beneficiaries found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

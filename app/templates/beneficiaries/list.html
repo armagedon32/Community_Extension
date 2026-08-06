@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Beneficiaries - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Beneficiary Management</h4>
+        <span class="text-muted small">Manage community profiles and beneficiary information</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('beneficiaries.create_beneficiary') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Beneficiary</a>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Segment</th>
+                        <th>Age / Sex</th>
+                        <th>Address</th>
+                        <th>Group</th>
+                        <th>Project</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for b in beneficiaries %}
+                    <tr>
+                        <td class="fw-semibold">{{ b.full_name }}</td>
+                        <td>{{ b.segment or '—' }}</td>
+                        <td>{{ b.age or '—' }} / {{ b.sex or '—' }}</td>
+                        <td>{{ b.address or '—' }}</td>
+                        <td>{{ b.group.name if b.group else '—' }}</td>
+                        <td>{{ b.project.title if b.project else '—' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('beneficiaries.edit_beneficiary', beneficiary_id=b.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#del{{ b.id }}"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                    <div class="modal fade" id="del{{ b.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header"><h5 class="modal-title">Delete Beneficiary</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                <div class="modal-body">Delete <strong>{{ b.full_name }}</strong>?</div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form method="POST" action="{{ url_for('beneficiaries.delete_beneficiary', beneficiary_id=b.id) }}">
+                                        <button class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No beneficiaries yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

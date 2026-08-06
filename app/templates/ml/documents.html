@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Training Documents - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Training Documents</h4>
+        <span class="text-muted small">Labeled documents for Naive Bayes training and documents to classify</span>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('ml.add_document') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Document</a>
+        <form method="POST" action="{{ url_for('ml.train_model') }}">
+            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-gear"></i> Train Model</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Document</th>
+                        <th>Type Label</th>
+                        <th>Project Category</th>
+                        <th>Predicted</th>
+                        <th>Content Preview</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for d in documents %}
+                    <tr>
+                        <td class="fw-semibold">{{ d.title }}</td>
+                        <td>
+                            {% if d.category %}
+                            <span class="badge text-bg-primary">{{ d.category }}</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">Unlabeled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if d.domain %}
+                            <span class="badge text-bg-info">{{ d.domain }}</span>
+                            {% else %}
+                            <span class="badge text-bg-secondary">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if d.predicted_category or d.predicted_domain %}
+                            <span class="badge text-bg-success">{{ d.predicted_category or '—' }}</span>
+                            <span class="badge text-bg-success">{{ d.predicted_domain or '—' }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="small text-muted">{{ d.content[:60] }}{% if d.content|length > 60 %}...{% endif %}</td>
+                        <td class="text-end">
+                            {% if not d.category and not d.domain %}
+                            <form method="POST" action="{{ url_for('ml.classify_document', doc_id=d.id) }}" class="d-inline">
+                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-magic"></i> Classify</button>
+                            </form>
+                            {% endif %}
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#del{{ d.id }}"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                    <div class="modal fade" id="del{{ d.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header"><h5 class="modal-title">Delete Document</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                <div class="modal-body">Delete <strong>{{ d.title }}</strong>?</div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form method="POST" action="{{ url_for('ml.delete_document', doc_id=d.id) }}">
+                                        <button class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">No documents yet. Add labeled documents to train the model.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

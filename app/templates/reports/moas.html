@@ -1,0 +1,33 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}MOA Report{% endblock %}
+{% block header_title %}Memoranda of Agreement Report{% endblock %}
+{% block report_content %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>MOA Title</th>
+            <th>Partner</th>
+            <th>Project</th>
+            <th>Status</th>
+            <th>Start</th>
+            <th>End</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for m in moas %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ m.title }}</td>
+            <td>{{ m.partner.name if m.partner else '—' }}</td>
+            <td>{{ m.project.title if m.project else '—' }}</td>
+            <td>{{ m.status }}</td>
+            <td>{{ m.start_date.strftime('%b %d, %Y') if m.start_date else '—' }}</td>
+            <td>{{ m.end_date.strftime('%b %d, %Y') if m.end_date else '—' }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No MOAs found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

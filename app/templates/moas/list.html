@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}MOA - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Memoranda of Agreement</h4>
+        <span class="text-muted small">Manage partnership agreements and institutional linkages</span>
+    </div>
+    <a href="{{ url_for('moas.create_moa') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New MOA</a>
+</div>
+
+<form method="GET" class="mb-3">
+    <div class="col-auto">
+        <select name="status" class="form-select form-select-sm" onchange="this.form.submit()" style="width: 200px;">
+            <option value="">All Status</option>
+            {% for s in MOA_STATUSES %}
+            <option value="{{ s }}" {% if current_status == s %}selected{% endif %}>{{ s }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</form>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>MOA Title</th>
+                        <th>Partner</th>
+                        <th>Project</th>
+                        <th>Status</th>
+                        <th>Duration</th>
+                        <th>File</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for m in moas %}
+                    <tr>
+                        <td class="fw-semibold">{{ m.title }}</td>
+                        <td>{{ m.partner.name if m.partner else '—' }}</td>
+                        <td>{{ m.project.title if m.project else '—' }}</td>
+                        <td>
+                            {% if m.status == 'Active' %}<span class="badge text-bg-success">Active</span>
+                            {% elif m.status == 'Pending' %}<span class="badge text-bg-warning">Pending</span>
+                            {% elif m.status == 'Expired' %}<span class="badge text-bg-secondary">Expired</span>
+                            {% elif m.status == 'Terminated' %}<span class="badge text-bg-danger">Terminated</span>
+                            {% else %}<span class="badge text-bg-info">Draft</span>{% endif %}
+                        </td>
+                        <td class="small">
+                            {% if m.start_date %}{{ m.start_date.strftime('%b %d, %Y') }}{% endif %}
+                            {% if m.end_date %} - {{ m.end_date.strftime('%b %d, %Y') }}{% endif %}
+                        </td>
+                        <td>
+                            {% if m.file_name %}
+                            <span class="badge text-bg-light border"><i class="bi bi-paperclip"></i> {{ m.file_name }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('moas.edit_moa', moa_id=m.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-pencil"></i></a>
+                            <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#del{{ m.id }}"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                    <div class="modal fade" id="del{{ m.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header"><h5 class="modal-title">Delete MOA</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                <div class="modal-body">Delete <strong>{{ m.title }}</strong>?</div>
+                                <div class="modal-footer">
+                                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                    <form method="POST" action="{{ url_for('moas.delete_moa', moa_id=m.id) }}">
+                                        <button class="btn btn-danger">Delete</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No MOAs yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

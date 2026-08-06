@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Collect Data - {{ survey.title }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('surveys.detail', survey_id=survey.id) }}" class="btn-link text-decoration-none">&larr; Back to Survey</a>
+    <h4 class="fw-bold mb-0 mt-2">Data Collection — {{ survey.title }}</h4>
+    <span class="text-muted small">MISP-A mobile data collection mode</span>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <form method="POST" action="{{ url_for('surveys.submit', survey_id=survey.id) }}" class="card p-4">
+            <h6 class="fw-bold mb-3"><i class="bi bi-person-circle"></i> Respondent Information</h6>
+            <div class="row g-3 mb-3">
+                <div class="col-md-5">
+                    <label class="form-label">Respondent Name</label>
+                    <input type="text" class="form-control form-control-lg" name="respondent_name" placeholder="Full name">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Location</label>
+                    <input type="text" class="form-control form-control-lg" name="location" placeholder="e.g. Barangay 3">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Contact</label>
+                    <input type="text" class="form-control form-control-lg" name="contact" placeholder="Phone no.">
+                </div>
+            </div>
+
+            <hr>
+
+            <h6 class="fw-bold mb-3"><i class="bi bi-list-check"></i> Survey Questions</h6>
+            {% for q in survey.questions %}
+            <div class="mb-4">
+                <label class="form-label fw-semibold">{{ loop.index }}. {{ q.question_text }}
+                    {% if q.required %}<span class="text-danger">*</span>{% endif %}
+                </label>
+
+                {% if q.question_type == 'scale' %}
+                <div class="btn-group d-flex flex-wrap w-100" role="group">
+                    {% for i in range(q.scale_min, q.scale_max + 1) %}
+                    <input type="radio" class="btn-check" name="q_{{ q.id }}" id="q_{{ q.id }}_{{ i }}" value="{{ i }}" {% if q.required %}required{% endif %}>
+                    <label class="btn btn-outline-primary btn-lg flex-fill" for="q_{{ q.id }}_{{ i }}">{{ i }}</label>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-between small text-muted mt-1">
+                    <span>Low ({{ q.scale_min }})</span>
+                    <span>High ({{ q.scale_max }})</span>
+                </div>
+
+                {% elif q.question_type == 'choice' %}
+                <div class="d-flex flex-column gap-2">
+                    {% for opt in q.option_list() %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="q_{{ q.id }}" id="q_{{ q.id }}_{{ loop.index }}" value="{{ opt }}" {% if q.required %}required{% endif %}>
+                        <label class="form-check-label" for="q_{{ q.id }}_{{ loop.index }}">{{ opt }}</label>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                {% elif q.question_type == 'number' %}
+                <input type="number" class="form-control form-control-lg" name="q_{{ q.id }}" {% if q.required %}required{% endif %}>
+
+                {% else %}
+                <textarea class="form-control" name="q_{{ q.id }}" rows="2" {% if q.required %}required{% endif %}></textarea>
+                {% endif %}
+            </div>
+            {% endfor %}
+
+            <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-send-fill"></i> Submit Record</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}Extension Projects Report{% endblock %}
+{% block header_title %}Extension Program Projects Report{% endblock %}
+{% block report_content %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Project Title</th>
+            <th>Category</th>
+            <th>Leader</th>
+            <th>Status</th>
+            <th>Progress</th>
+            <th class="text-end">Budget</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in projects %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ p.title }}<br><small class="text-muted">{{ p.location or '' }}</small></td>
+            <td>{{ p.category }}</td>
+            <td>{{ p.leader.full_name if p.leader else '—' }}</td>
+            <td>{{ p.status }}</td>
+            <td>{{ p.progress }}%</td>
+            <td class="text-end">&#8369; {{ "{:,.2f}".format(p.budget or 0) }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="7" class="text-center text-muted">No projects found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

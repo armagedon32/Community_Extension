@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block title %}{{ partner.name }} - CELMIS{% endblock %}
+
+{% block content %}
+<div class="mb-3">
+    <a href="{{ url_for('partners.list_partners') }}"><i class="bi bi-arrow-left"></i> Back to Partners</a>
+</div>
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card p-4">
+            <div class="text-center mb-3">
+                <div class="display-5 text-primary"><i class="bi bi-building"></i></div>
+                <h5 class="fw-bold mt-2 mb-0">{{ partner.name }}</h5>
+                <span class="badge text-bg-light border">{{ partner.partner_type }}</span>
+                {% if partner.status == 'Active' %}<span class="badge text-bg-success">Active</span>
+                {% else %}<span class="badge text-bg-secondary">{{ partner.status }}</span>{% endif %}
+            </div>
+            <hr>
+            <div class="small">
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Engagement:</span><span class="fw-semibold">{{ partner.engagement_level or '—' }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Contact:</span><span>{{ partner.contact_person or '—' }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Number:</span><span>{{ partner.contact_number or '—' }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Email:</span><span>{{ partner.email or '—' }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Address:</span><span>{{ partner.address or '—' }}</span></div>
+            </div>
+            <div class="mt-3 d-flex gap-2">
+                <a href="{{ url_for('partners.edit_partner', partner_id=partner.id) }}" class="btn btn-outline-secondary btn-sm flex-fill">Edit</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card p-4">
+            <h6 class="fw-bold mb-3">Contribution</h6>
+            <p class="text-muted">{{ partner.contribution or 'No contribution recorded.' }}</p>
+            <hr>
+            <h6 class="fw-bold mb-3">Linked MOAs</h6>
+            {% for m in moas %}
+            <div class="d-flex justify-content-between border rounded p-2 mb-2">
+                <span>{{ m.title }}</span>
+                <span class="badge text-bg-light border">{{ m.status }}</span>
+            </div>
+            {% else %}
+            <p class="text-muted">No MOAs linked.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

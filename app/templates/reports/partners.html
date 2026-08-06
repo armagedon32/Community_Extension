@@ -1,0 +1,31 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}Partners Report{% endblock %}
+{% block header_title %}Institutional Partners and Linkages Report{% endblock %}
+{% block report_content %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Partner</th>
+            <th>Type</th>
+            <th>Engagement</th>
+            <th>Contact Person</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for p in partners %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ p.name }}</td>
+            <td>{{ p.partner_type }}</td>
+            <td>{{ p.engagement_level or '—' }}</td>
+            <td>{{ p.contact_person or '—' }}</td>
+            <td>{{ p.status }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="6" class="text-center text-muted">No partners found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

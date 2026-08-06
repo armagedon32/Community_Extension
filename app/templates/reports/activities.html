@@ -1,0 +1,35 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}Activities Report{% endblock %}
+{% block header_title %}Extension Activities Report{% endblock %}
+{% block report_content %}
+<table class="table table-bordered">
+    <thead class="table-light">
+        <tr>
+            <th>#</th>
+            <th>Activity</th>
+            <th>Project</th>
+            <th>Date</th>
+            <th>Time</th>
+            <th>Location</th>
+            <th>Participants</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for a in activities %}
+        <tr>
+            <td>{{ loop.index }}</td>
+            <td>{{ a.title }}</td>
+            <td>{{ a.project.title if a.project else '—' }}</td>
+            <td>{{ a.schedule_date.strftime('%b %d, %Y') if a.schedule_date else '—' }}</td>
+            <td>{% if a.start_time %}{{ a.start_time.strftime('%I:%M %p') }}{% if a.end_time %} - {{ a.end_time.strftime('%I:%M %p') }}{% endif %}{% else %}—{% endif %}</td>
+            <td>{{ a.location or '—' }}</td>
+            <td>{{ a.participants or 0 }}</td>
+            <td>{{ a.status }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="8" class="text-center text-muted">No activities found.</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

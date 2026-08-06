@@ -1,0 +1,262 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Information Management Dashboard</h4>
+        <span class="text-muted small">Welcome, {{ current_user.full_name }}</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-primary">{{ total_projects }}</div>
+                    <div class="label">Total Projects</div>
+                </div>
+                <div class="icon bg-soft-primary"><i class="bi bi-folder2-open"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-success">{{ total_partners }}</div>
+                    <div class="label">Partner Organizations</div>
+                </div>
+                <div class="icon bg-soft-success"><i class="bi bi-building"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-warning">{{ total_beneficiaries }}</div>
+                    <div class="label">Beneficiaries</div>
+                </div>
+                <div class="icon bg-soft-warning"><i class="bi bi-people"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-info">{{ total_activities }}</div>
+                    <div class="label">Activities</div>
+                </div>
+                <div class="icon bg-soft-info"><i class="bi bi-calendar-event"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-2">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ projects_proposed }}</div>
+            <div class="label">Proposed</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">{{ projects_active }}</div>
+            <div class="label">Ongoing</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ projects_completed }}</div>
+            <div class="label">Completed</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ total_moas }}</div>
+            <div class="label">MOA Records</div>
+        </div>
+    </div>
+    <div class="col-12 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-danger">&#8369; {{ "{:,.0f}".format(total_budget) }}</div>
+            <div class="label">Total Project Budget</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Project Status Distribution</h6>
+            <div id="statusChart"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Program Distribution by Category</h6>
+            <div id="categoryChart"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Beneficiary Segments</h6>
+            <div id="segmentChart"></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Partner Types</h6>
+            <div id="partnerChart"></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Activity Status</h6>
+            <div id="activityChart"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">Recent Projects</h6>
+                <a href="{{ url_for('projects.list_projects') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr><th>Project</th><th>Status</th><th>Progress</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in recent_projects %}
+                        <tr>
+                            <td>
+                                <a class="text-decoration-none fw-semibold" href="{{ url_for('projects.view_project', project_id=p.id) }}">{{ p.title }}</a>
+                                <div class="small text-muted">{{ p.category }}</div>
+                            </td>
+                            <td>
+                                {% if p.status == 'Ongoing' %}<span class="badge text-bg-warning">Ongoing</span>
+                                {% elif p.status == 'Completed' %}<span class="badge text-bg-success">Completed</span>
+                                {% else %}<span class="badge text-bg-secondary">Proposed</span>{% endif %}
+                            </td>
+                            <td>
+                                <div class="progress" style="height: 8px; width: 100px;">
+                                    <div class="progress-bar bg-primary" style="width: {{ p.progress }}%"></div>
+                                </div>
+                                <small>{{ p.progress }}%</small>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-center text-muted">No projects yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">Recent Activities</h6>
+                <a href="{{ url_for('activities.list_activities') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr><th>Activity</th><th>Date</th><th>Status</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for a in recent_activities %}
+                        <tr>
+                            <td class="fw-semibold">{{ a.title }}</td>
+                            <td>{{ a.schedule_date.strftime('%b %d, %Y') if a.schedule_date else '—' }}</td>
+                            <td>
+                                {% if a.status == 'Completed' %}<span class="badge text-bg-success">{{ a.status }}</span>
+                                {% elif a.status == 'Ongoing' %}<span class="badge text-bg-warning">{{ a.status }}</span>
+                                {% elif a.status == 'Cancelled' %}<span class="badge text-bg-danger">{{ a.status }}</span>
+                                {% else %}<span class="badge text-bg-info">{{ a.status }}</span>{% endif %}
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-center text-muted">No activities yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const statusData = {{ status_dist | tojson }};
+    const categoryData = {{ category_dist | tojson }};
+    const segmentData = {{ beneficiary_segments | tojson }};
+    const partnerData = {{ partner_types | tojson }};
+    const activityData = {{ activity_status_dist | tojson }};
+
+    const statusColors = { "Proposed": "#64748b", "Ongoing": "#f59e0b", "Completed": "#16a34a" };
+
+    new ApexCharts(document.querySelector("#statusChart"), {
+        chart: { type: "donut", height: 280 },
+        labels: Object.keys(statusData),
+        series: Object.values(statusData),
+        colors: Object.keys(statusData).map(k => statusColors[k] || "#38bdf8"),
+        legend: { position: "bottom" },
+        plotOptions: { pie: { donut: { size: "65%" } } },
+        dataLabels: { enabled: false },
+        tooltip: { y: { formatter: v => v + " projects" } }
+    }).render();
+
+    new ApexCharts(document.querySelector("#categoryChart"), {
+        chart: { type: "bar", height: 280 },
+        series: [{ name: "Projects", data: Object.values(categoryData) }],
+        xaxis: { categories: Object.keys(categoryData), labels: { style: { fontSize: "11px" } } },
+        colors: ["#1a4d8f"],
+        plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
+        dataLabels: { enabled: false },
+        grid: { borderColor: "#e2e8f0" }
+    }).render();
+
+    new ApexCharts(document.querySelector("#segmentChart"), {
+        chart: { type: "pie", height: 280 },
+        labels: Object.keys(segmentData),
+        series: Object.values(segmentData),
+        legend: { position: "bottom" },
+        dataLabels: { enabled: false }
+    }).render();
+
+    new ApexCharts(document.querySelector("#partnerChart"), {
+        chart: { type: "pie", height: 280 },
+        labels: Object.keys(partnerData),
+        series: Object.values(partnerData),
+        legend: { position: "bottom" },
+        dataLabels: { enabled: false }
+    }).render();
+
+    new ApexCharts(document.querySelector("#activityChart"), {
+        chart: { type: "bar", height: 280 },
+        series: [{ name: "Activities", data: Object.values(activityData) }],
+        xaxis: { categories: Object.keys(activityData), labels: { style: { fontSize: "11px" } } },
+        colors: ["#0d9488"],
+        plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
+        dataLabels: { enabled: false },
+        grid: { borderColor: "#e2e8f0" }
+    }).render();
+</script>
+{% endblock %}

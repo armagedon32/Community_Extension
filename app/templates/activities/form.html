@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block title %}Activity - CELMIS{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px;">
+    <div class="card-body p-4">
+        <h4 class="fw-bold mb-4">{{ 'Edit Activity' if activity else 'Schedule New Activity' }}</h4>
+        <form method="POST">
+            <div class="mb-3">
+                <label class="form-label">Activity Title *</label>
+                <input type="text" name="title" class="form-control" required value="{{ activity.title if activity else '' }}">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Related Project</label>
+                <select name="project_id" class="form-select">
+                    <option value="">— None —</option>
+                    {% for p in projects %}
+                    <option value="{{ p.id }}" {% if activity and activity.project_id == p.id %}selected{% endif %}>{{ p.title }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Description</label>
+                <textarea name="description" class="form-control" rows="3">{{ activity.description if activity else '' }}</textarea>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Schedule Date</label>
+                    <input type="date" name="schedule_date" class="form-control" value="{{ activity.schedule_date.isoformat() if activity and activity.schedule_date else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Start Time</label>
+                    <input type="time" name="start_time" class="form-control" value="{{ activity.start_time.strftime('%H:%M') if activity and activity.start_time else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">End Time</label>
+                    <input type="time" name="end_time" class="form-control" value="{{ activity.end_time.strftime('%H:%M') if activity and activity.end_time else '' }}">
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Location</label>
+                    <input type="text" name="location" class="form-control" value="{{ activity.location if activity else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Participants</label>
+                    <input type="number" min="0" name="participants" class="form-control" value="{{ activity.participants if activity else '' }}">
+                </div>
+                <div class="col-md-4 mb-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        {% for s in ACTIVITY_STATUSES %}
+                        <option value="{{ s }}" {% if activity and activity.status == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="mb-4">
+                <label class="form-label">Contact Person</label>
+                <input type="text" name="contact_person" class="form-control" value="{{ activity.contact_person if activity else '' }}">
+            </div>
+            <div class="d-flex gap-2">
+                <button type="submit" class="btn btn-primary">{{ 'Save Changes' if activity else 'Schedule Activity' }}</button>
+                <a href="{{ url_for('activities.list_activities') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

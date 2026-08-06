@@ -1,0 +1,12 @@
+# AUTO-CLASSIFICATION TEST: leave category and domain EMPTY (3 commas: title,,,content).
+# The AI will predict BOTH the document type and the project category from the content.
+# Run:  python import_documents.py templates\classification_test.csv
+title,category,domain,content
+New Governance MOA,,,"This memorandum of agreement establishes a partnership between the university and the municipal government for joint extension collaboration with transparency and accountability mechanisms."
+New Literacy Proposal,,,"We request funding for a classroom library and weekly reading remediation for out-of-school youth. Teachers will conduct literacy sessions using phonics and comprehension materials."
+Health Caravan Design,,,"The activity design schedules a vaccination drive, blood pressure screening, and nutrition counseling for mothers at the barangay health center."
+Savings Cooperative Proposal,,,"This proposal establishes a savings cooperative where women vendors can access small loans, finance and grow their income."
+Coastal Cleanup Design,,,"This activity design organizes a coastal cleanup and mangrove planting with volunteers to restore riverbank and reduce pollution."
+New Teacher Training MOA,,,"This memorandum of agreement arranges teacher training workshops with the professional development center for classroom instruction."
+Feedback on Livelihood Training,,,"Participants of the livelihood training shared feedback on soap-making sessions. They requested additional business management topics and starter kits."
+Accomplishment Report,,,"This accomplishment report documents the completed nutrition program. A total of 150 children were served and follow-up measurements show improved weight-for-age indicators."

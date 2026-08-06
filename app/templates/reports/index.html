@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Reports - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Reports &amp; Decision Support</h4>
+        <span class="text-muted small">Generate institutional reports for monitoring, accreditation, and planning</span>
+    </div>
+    <a href="{{ url_for('reports.summary_csv') }}" class="btn btn-outline-success"><i class="bi bi-download"></i> Export Summary (CSV)</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="display-6 text-primary mb-2"><i class="bi bi-folder2-open"></i></div>
+            <h6 class="fw-bold">Projects Report</h6>
+            <p class="text-muted small">List of all extension projects with status, progress, and budget.</p>
+            <a href="{{ url_for('reports.projects_report') }}" class="btn btn-sm btn-primary mt-auto">Generate</a>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="display-6 text-success mb-2"><i class="bi bi-people"></i></div>
+            <h6 class="fw-bold">Beneficiaries Report</h6>
+            <p class="text-muted small">List of beneficiaries with segment, group, and project affiliation.</p>
+            <a href="{{ url_for('reports.beneficiaries_report') }}" class="btn btn-sm btn-primary mt-auto">Generate</a>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="display-6 text-warning mb-2"><i class="bi bi-building"></i></div>
+            <h6 class="fw-bold">Partners Report</h6>
+            <p class="text-muted small">List of partner organizations with type and engagement level.</p>
+            <a href="{{ url_for('reports.partners_report') }}" class="btn btn-sm btn-primary mt-auto">Generate</a>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="display-6 text-info mb-2"><i class="bi bi-calendar-event"></i></div>
+            <h6 class="fw-bold">Activities Report</h6>
+            <p class="text-muted small">Scheduled and completed activities with participants.</p>
+            <a href="{{ url_for('reports.activities_report') }}" class="btn btn-sm btn-primary mt-auto">Generate</a>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="display-6 text-danger mb-2"><i class="bi bi-file-earmark-text"></i></div>
+            <h6 class="fw-bold">MOA Report</h6>
+            <p class="text-muted small">Agreements, partners, and status of institutional linkages.</p>
+            <a href="{{ url_for('reports.moas_report') }}" class="btn btn-sm btn-primary mt-auto">Generate</a>
+        </div>
+    </div>
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="display-6 text-secondary mb-2"><i class="bi bi-clipboard-check"></i></div>
+            <h6 class="fw-bold">Accomplishments Report</h6>
+            <p class="text-muted small">Accomplishment reports, beneficiaries served, and volunteers.</p>
+            <a href="{{ url_for('reports.accomplishments_report') }}" class="btn btn-sm btn-primary mt-auto">Generate</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

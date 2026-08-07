@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+{% block title %}Decision Support - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">AI Decision Support &amp; Recommendations</h4>
+        <span class="text-muted small">Data-driven guidance for extension decisions</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ data.total_projects }}</div>
+            <div class="label">Projects</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ data.total_beneficiaries }}</div>
+            <div class="label">Beneficiaries</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ data.total_partners }}</div>
+            <div class="label">Partners</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">&#8369; {{ "{:,.0f}".format(data.total_budget) }}</div>
+            <div class="label">Budget</div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">How to Use This Page</h6>
+    </div>
+    <p class="small text-muted mb-0">
+        CELMIS analyzes the current portfolio and produces prioritized, actionable recommendations.
+        Start with the <strong>High</strong> priority items, then address <strong>Medium</strong> and
+        <strong>Low</strong> as capacity allows. Each recommendation links a finding to a concrete decision.
+    </p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Recommendations by Priority</h6>
+            {% if recommendations %}
+            <div class="d-flex flex-column gap-2">
+                {% for r in recommendations %}
+                <div class="d-flex align-items-start gap-2 border rounded p-2">
+                    <i class="bi {{ priority_icons[r.priority][0] }} {{ priority_icons[r.priority][1] }} fs-5"></i>
+                    <div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge text-bg-{{ 'danger' if r.priority == 'High' else ('warning' if r.priority == 'Medium' else 'success') }}">{{ r.priority }}</span>
+                            <span class="small fw-semibold">{{ r.title }}</span>
+                        </div>
+                        <div class="small text-muted mt-1">{{ r.category }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No recommendations available.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Detailed Recommendations</h6>
+            {% for r in recommendations %}
+            <div class="mb-3 pb-3 border-bottom">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge text-bg-{{ 'danger' if r.priority == 'High' else ('warning' if r.priority == 'Medium' else 'success') }}">{{ r.priority }}</span>
+                    <span class="badge text-bg-light border text-dark">{{ r.category }}</span>
+                    <strong class="small">{{ r.title }}</strong>
+                </div>
+                <p class="small text-muted mb-0 mt-2">{{ r.detail }}</p>
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">No detailed recommendations.</p>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Interpretation for Decision-Making</h6>
+    </div>
+    <p class="small text-muted mb-0">
+        These recommendations translate portfolio analytics into decisions: where to expand,
+        which categories need attention, how to strengthen institution linkages, and whether
+        the AI modules are ready to assist. Acting on the High-priority items first yields the
+        biggest near-term improvement to institutional extension performance and reporting.
+    </p>
+</div>
+{% endblock %}

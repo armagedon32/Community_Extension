@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block title %}Compliance Reports - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Compliance Reports</h4>
+        <span class="text-muted small">Automated reports for accreditation &amp; regulatory bodies</span>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Portfolio Snapshot</h6>
+    </div>
+    <div class="row g-3">
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block text-primary">{{ data.projects_total }}</strong>Projects</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block text-success">{{ data.beneficiaries_total }}</strong>Beneficiaries</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block text-info">{{ data.partners_total }}</strong>Partners</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block text-warning">{{ data.moas_total }}</strong>MOA Records</div></div>
+    </div>
+    <p class="small text-muted mt-3 mb-0">
+        Select a body below to generate a compliance-tailored report pulling live portfolio data,
+        mapped to its typical reporting requirements with an interpretation for institutional decision-making.
+    </p>
+</div>
+
+<div class="row g-3">
+    {% for b in bodies %}
+    <div class="col-12 col-md-6 col-lg-4">
+        <div class="card p-4 h-100">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="badge text-bg-primary">{{ b.name }}</span>
+            </div>
+            <h6 class="fw-bold mb-1">{{ b.label }}</h6>
+            <p class="text-muted small">{{ b.description }}</p>
+            <div class="small text-muted mb-3"><i class="bi bi-crosshair"></i> {{ b.focus }}</div>
+            <a href="{{ url_for('compliance.report', code=b.code) }}" class="btn btn-sm btn-primary mt-auto">Generate Report</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

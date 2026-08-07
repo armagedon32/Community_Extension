@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Predictive Analytics - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Predictive Analytics &amp; Performance Monitoring</h4>
+        <span class="text-muted small">Trend analysis and next-period forecasts</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ data.activity_prediction }}</div>
+            <div class="label">Forecast Activities ({{ data.horizon }})</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ data.ben_prediction }}</div>
+            <div class="label">Forecast Beneficiaries Served</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ data.total_projects }}</div>
+            <div class="label">Projects ({{ data.completed }} completed)</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">{{ data.activity_signal }}</div>
+            <div class="label">Activity Trend</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <i class="bi bi-lightbulb text-warning fs-5"></i>
+                <h6 class="fw-bold mb-0">Interpretation</h6>
+            </div>
+            <ul class="small text-muted mb-0 ps-3">
+                <li class="mb-1">Extension activity is <strong>{{ data.activity_signal }}</strong>. CELMIS forecasts about <strong>{{ data.activity_prediction }}</strong> activities in <strong>{{ data.horizon }}</strong>.</li>
+                <li class="mb-1">Beneficiary momentum is <strong>{{ data.ben_signal }}</strong> — an estimated <strong>{{ data.ben_prediction }}</strong> beneficiaries may be served next period.</li>
+                <li class="mb-1">On average, each project reaches about <strong>{{ data.avg_ben }}</strong> beneficiaries; {{ data.ongoing }} project(s) are ongoing and {{ data.completed }} completed.</li>
+            </ul>
+            <p class="small text-muted mt-3 mb-0">These projections are estimates from recent trends. Use them to plan staffing and resources, but adjust based on new registrations and field conditions.</p>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <h6 class="fw-bold mb-3">Monthly Trend</h6>
+            {% if data.activity_series %}
+            <div id="trendChart"></div>
+            {% else %}
+            <p class="text-muted mb-0">No activity data yet. Record activities to unlock trend analytics.</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card p-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-graph-up text-primary fs-5"></i>
+        <h6 class="fw-bold mb-0">Performance Monitoring</h6>
+    </div>
+    <p class="small text-muted mb-0">
+        Track activity, accomplishment, and beneficiary counts over time. Rising trends indicate growth in
+        extension delivery; falling trends signal where additional engagement or capacity building may be needed.
+    </p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const series = {{ data.activity_series | tojson }};
+    if (series.length) {
+        new ApexCharts(document.querySelector("#trendChart"), {
+            chart: { type: "line", height: 300, toolbar: { show: false } },
+            series: [
+                { name: "Activities", data: series.map(s => s.value) }
+            ],
+            xaxis: { categories: series.map(s => s.year + "-" + String(s.month).padStart(2, "0")) },
+            stroke: { curve: "smooth" },
+            markers: { size: 4 },
+            colors: ["#1a4d8f"],
+            dataLabels: { enabled: false },
+            grid: { borderColor: "#e2e8f0" }
+        }).render();
+    }
+</script>
+{% endblock %}

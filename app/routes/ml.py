@@ -268,11 +268,23 @@ def train_model():
             f"Project Category: Accuracy {d_metrics['accuracy']:.0%}",
             "success",
         )
+        from app.routes.notifications import notify
+        notify(
+            f"ML models trained — Document Type accuracy {metrics['accuracy']:.0%}, Project Category accuracy {d_metrics['accuracy']:.0%}.",
+            category="success",
+            link=url_for("ml.dashboard"),
+        )
     else:
         flash(
             f"Document type model trained (Accuracy: {metrics['accuracy']:.0%}). "
             f"Add at least 3 documents with a project category/domain to train the second model.",
             "success",
+        )
+        from app.routes.notifications import notify
+        notify(
+            f"Document type model trained — accuracy {metrics['accuracy']:.0%}.",
+            category="success",
+            link=url_for("ml.dashboard"),
         )
     return redirect(url_for("ml.dashboard"))
 
@@ -355,6 +367,12 @@ def _classify_and_store(doc):
     parts = [p for p in (predicted, predicted_domain) if p]
     if parts:
         flash(f"Document classified as: {' / '.join(parts)}", "success")
+        from app.routes.notifications import notify
+        notify(
+            f"Document '{doc.title}' classified as {' / '.join(parts)}.",
+            category="success",
+            link=url_for("ml.list_documents"),
+        )
     else:
         flash("Unable to classify this document (not enough training data yet).", "warning")
 

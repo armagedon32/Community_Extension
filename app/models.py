@@ -52,6 +52,24 @@ TRANSACTION_TYPES = ["Contribution", "Expense", "Allocation"]
 TRANSACTION_STATUSES = ["Active", "Inactive"]
 
 
+class Notification(db.Model):
+    """In-app notification for a user, generated automatically by system events."""
+    __tablename__ = "notifications"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    message = db.Column(db.String(500), nullable=False)
+    category = db.Column(db.String(20), nullable=False, default="info")  # info/warning/success/danger
+    link = db.Column(db.String(255), nullable=True)
+    is_read = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship("User", backref="notifications")
+
+    def __repr__(self):
+        return f"<Notification {self.id}: {self.message[:40]}>"
+
+
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 

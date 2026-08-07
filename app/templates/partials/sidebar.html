@@ -28,6 +28,9 @@
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}">
             <i class="bi bi-graph-up"></i> Reports
         </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('compliance.') %}active{% endif %}" href="{{ url_for('compliance.index') }}">
+            <i class="bi bi-award"></i> Compliance Reports
+        </a>
         <div class="nav-section">AI & Evaluation</div>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ml.') %}active{% endif %}" href="{{ url_for('ml.dashboard') }}">
             <i class="bi bi-cpu"></i> Machine Learning Lab
@@ -37,6 +40,12 @@
         </a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('sentiment.') %}active{% endif %}" href="{{ url_for('sentiment.dashboard') }}">
             <i class="bi bi-emoji-smile"></i> Feedback Sentiment
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('decision.') %}active{% endif %}" href="{{ url_for('decision.dashboard') }}">
+            <i class="bi bi-lightbulb"></i> Decision Support
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('predictive.') %}active{% endif %}" href="{{ url_for('predictive.dashboard') }}">
+            <i class="bi bi-graph-up-arrow"></i> Predictive Analytics
         </a>
         <div class="nav-section">Finance</div>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finance.') %}active{% endif %}" href="{{ url_for('finance.dashboard') }}">

@@ -1,0 +1,79 @@
+{% extends 'base.html' %}
+{% block title %}{{ body.name }} Report - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('compliance.index') }}" class="btn-link text-decoration-none">&larr; All Compliance Reports</a>
+        <h4 class="fw-bold mb-0 mt-2">{{ body.name }} Compliance Report</h4>
+        <span class="text-muted small">{{ body.label }}</span>
+    </div>
+    <button class="btn btn-outline-secondary" onclick="window.print()"><i class="bi bi-printer"></i> Print</button>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Interpretation</h6>
+    </div>
+    <p class="small text-muted mb-2">
+        This automated report presents the institution's community-extension evidence mapped to
+        <strong>{{ body.name }}</strong> requirements: {{ body.focus }}.
+    </p>
+    <ul class="small text-muted mb-0 ps-3">
+        <li>The institution records <strong>{{ data.projects_total }}</strong> extension project(s) —
+            {% set st = data.projects_by_status %}
+            {{ st.get('Completed', 0) }} completed, {{ st.get('Ongoing', 0) }} ongoing, {{ st.get('Proposed', 0) }} proposed.
+            Completed and ongoing projects demonstrate active, deliverable-based community engagement required for accreditation evidence.</li>
+        <li>A total of <strong>{{ data.beneficiaries_total }}</strong> beneficiary record(s) and <strong>{{ data.beneficiaries_served }}</strong>
+            documented beneficiaries served across accomplishment reports quantify community reach.</li>
+        <li>Institutional linkages are evidenced by <strong>{{ data.partners_total }}</strong> partner organization(s) and
+            <strong>{{ data.moas_total }}</strong> MOA record(s), showing formalized, sustained partnerships.</li>
+        <li><strong>{{ data.activities_completed }}</strong> completed activity/ies and <strong>{{ data.accomplishments_total }}</strong>
+            accomplishment report(s) provide the process documentation a compliance review expects.</li>
+    </ul>
+</div>
+
+{% if body.code == 'sdg' %}
+<div class="card p-4 mb-4">
+    <h6 class="fw-bold mb-3">SDG Alignment Mapping</h6>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead><tr><th>SDG</th><th>Matched Extension Focus</th><th class="text-end">Beneficiaries</th></tr></thead>
+            <tbody>
+                {% for row in sdg_mapping %}
+                <tr>
+                    <td class="fw-semibold">{{ row.sdg }}</td>
+                    <td class="small">{{ row.matched }}</td>
+                    <td class="text-end">{{ row.count }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="3" class="text-center text-muted">No beneficiary segment data to map yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="small text-muted mb-0">Mapping beneficiaries by segment to representative SDGs helps demonstrate the institution's contribution to national and global development targets.</p>
+</div>
+{% endif %}
+
+<div class="card p-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-clipboard-check text-primary fs-5"></i>
+        <h6 class="fw-bold mb-0">Evidence Summary for {{ body.name }}</h6>
+    </div>
+    <div class="row g-2">
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.projects_total }}</strong>Projects</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.beneficiaries_total }}</strong>Beneficiaries</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.partners_total }}</strong>Partners</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.moas_total }}</strong>MOAs</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.activities_completed }}</strong>Activities Completed</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.accomplishments_total }}</strong>Accomplishment Reports</div></div>
+        <div class="col-6 col-md-3"><div class="border rounded p-2 text-center small"><strong class="d-block">{{ data.beneficiaries_served }}</strong>Beneficiaries Served</div></div>
+    </div>
+    <p class="small text-muted mt-3 mb-0">
+        Print or export this page to attach as evidence in the {{ body.name }} submission package.
+        Reports reflect live system data, so keep project, beneficiary, partner, and activity records updated.
+    </p>
+</div>
+{% endblock %}

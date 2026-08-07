@@ -4,6 +4,16 @@
         <small class="text-muted">Kolehiyo ng Subic</small>
     </div>
     <div class="d-flex align-items-center gap-3">
+        <div class="dropdown">
+            <a class="text-decoration-none position-relative" href="{{ url_for('notifications.index') }}">
+                <i class="bi bi-bell fs-5"></i>
+                {% if g.unread_notifications and g.unread_notifications > 0 %}
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    {{ g.unread_notifications }}
+                </span>
+                {% endif %}
+            </a>
+        </div>
         <div class="text-end">
             <div class="fw-semibold small">{{ current_user.full_name }}</div>
             <span class="badge text-bg-primary small">{{ current_user.role }}</span>

@@ -43,6 +43,10 @@ def create_app(config_class=Config):
     from app.routes.finance import finance_bp
     from app.routes.surveys import surveys_bp
     from app.routes.sentiment import sentiment_bp
+    from app.routes.notifications import notifications_bp
+    from app.routes.decision import decision_bp
+    from app.routes.predictive import predictive_bp
+    from app.routes.compliance import compliance_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -57,6 +61,10 @@ def create_app(config_class=Config):
     app.register_blueprint(finance_bp)
     app.register_blueprint(surveys_bp)
     app.register_blueprint(sentiment_bp)
+    app.register_blueprint(notifications_bp)
+    app.register_blueprint(decision_bp)
+    app.register_blueprint(predictive_bp)
+    app.register_blueprint(compliance_bp)
 
     with app.app_context():
         db.create_all()

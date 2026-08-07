@@ -372,6 +372,7 @@ def dashboard():
             return None
         try:
             m = json.loads(model.metrics_json)
+            report = m.get("classification_report") or {}
             return {
                 "accuracy": m.get("accuracy"),
                 "precision": m.get("precision"),
@@ -379,6 +380,8 @@ def dashboard():
                 "f1": m.get("f1"),
                 "confusion_matrix": m.get("confusion_matrix"),
                 "classes": m.get("classes"),
+                "test_samples": m.get("test_samples"),
+                "classification_report": report,
             }
         except Exception:
             return None

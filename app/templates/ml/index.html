@@ -46,6 +46,43 @@
     </div>
 </div>
 
+{% macro interpretation_insights(chart) %}
+{% if chart and chart.classification_report %}
+{% set acc = (chart.accuracy or 0) * 100 %}
+{% set prec = (chart.precision or 0) * 100 %}
+{% set rec = (chart.recall or 0) * 100 %}
+{% set f1 = (chart.f1 or 0) * 100 %}
+{% set gap = [prec - rec, rec - prec]|max %}
+{% set ns = namespace(best='', best_f1=-1, worst='', worst_f1=2) %}
+{% for key, vals in chart.classification_report.items() %}
+    {% if vals is mapping and key not in ['macro avg', 'weighted avg', 'accuracy'] %}
+        {% set cf1 = vals.get('f1-score', 0) %}
+        {% if cf1 > ns.best_f1 %}{% set ns.best_f1 = cf1 %}{% set ns.best = key %}{% endif %}
+        {% if cf1 < ns.worst_f1 %}{% set ns.worst_f1 = cf1 %}{% set ns.worst = key %}{% endif %}
+    {% endif %}
+{% endfor %}
+<hr>
+<h6 class="fw-bold mb-2">Interpretation</h6>
+<ul class="small text-muted mb-0 ps-3">
+    <li class="mb-1">
+        {% if acc >= 90 %}More than nine out of ten test documents were labeled correctly, so the model generalizes very well.
+        {% elif acc >= 70 %}The model gets roughly <strong>{{ '%.1f'|format(acc) }}%</strong> of documents right, but still misfires on about {{ '%.1f'|format(100 - acc) }}% — good enough for auto-suggestion, yet worth a manual check on borderline cases.
+        {% else %}At only <strong>{{ '%.1f'|format(acc) }}%</strong> accuracy, performance is below what's reliable. Add more labeled documents or fix inconsistent labels before relying on this model.{% endif %}
+    </li>
+    <li class="mb-1">
+        {% if gap < 5 %}Precision ({{ '%.1f'|format(prec) }}%) and recall ({{ '%.1f'|format(rec) }}%) are well balanced — the model is neither over-conservative nor over-eager.
+        {% elif prec > rec %}<strong>Precision ({{ '%.1f'|format(prec) }}%)</strong> exceeds recall ({{ '%.1f'|format(rec) }}%), meaning when it predicts a label it is usually right, but it may overlook some documents.
+        {% else %}<strong>Recall ({{ '%.1f'|format(rec) }}%)</strong> exceeds precision ({{ '%.1f'|format(prec) }}%), so it catches most relevant documents but also produces some false positives.{% endif %}
+    </li>
+    <li class="mb-1">Best recognized category: <strong>{{ ns.best }}</strong> (F1 {{ '%.1f'|format(ns.best_f1 * 100) }}%).</li>
+    {% if ns.best_f1 - ns.worst_f1 >= 0.15 %}
+    <li>Weakest category: <strong>{{ ns.worst }}</strong> (F1 {{ '%.1f'|format(ns.worst_f1 * 100) }}%) — this class is often (mis)classified with others; adding label-specific examples would help most here.</li>
+    {% endif %}
+</ul>
+{% else %}
+{% endif %}
+{% endmacro %}
+
 {% macro model_card(title, latest, chart, desc) %}
 <div class="col-lg-6">
     <div class="card p-4 h-100">
@@ -124,6 +161,7 @@
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix</h6>
             {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
+            {{ interpretation_insights(chart) }}
             {% else %}
             <p class="text-muted mb-0">Not trained yet. Add labeled documents then click <strong>Train Naive Bayes</strong>.</p>
             {% endif %}
@@ -161,6 +199,7 @@
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix</h6>
             {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
+            {{ interpretation_insights(chart_domain) }}
             {% else %}
             <p class="text-muted mb-0">Not trained yet. Add at least 3 documents with a project category/domain label.</p>
             {% endif %}

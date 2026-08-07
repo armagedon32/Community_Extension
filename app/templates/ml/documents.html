@@ -59,14 +59,30 @@
                         </td>
                         <td class="small text-muted">
                             {% if objectives.get(d.id) %}
-                            <span class="text-uppercase fw-semibold text-primary" style="font-size:.68rem; letter-spacing:.05em;">Objective</span><br>
-                            {{ objectives.get(d.id) }}
+                            <button type="button" class="btn btn-link p-0 text-start text-decoration-none preview-btn" data-bs-toggle="modal" data-bs-target="#content{{ d.id }}">
+                                <span class="text-uppercase fw-semibold text-primary" style="font-size:.68rem; letter-spacing:.05em;">Objective</span><br>
+                                {{ objectives.get(d.id) }}
+                            </button>
                             {% else %}—{% endif %}
                         </td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#del{{ d.id }}"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>
+                    <div class="modal fade" id="content{{ d.id }}" tabindex="-1">
+                        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{{ d.title }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body" style="white-space:pre-wrap;">{{ d.content }}</div>
+                                {% if d.filename %}
+                                <div class="modal-footer small text-muted">Source file: {{ d.filename }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                     <div class="modal fade" id="del{{ d.id }}" tabindex="-1">
                         <div class="modal-dialog">
                             <div class="modal-content">

@@ -143,6 +143,9 @@ body {
 /* Badges */
 .badge { font-weight: 500; }
 
+.preview-btn { color: inherit; }
+.preview-btn:hover { color: var(--primary); }
+
 /* Report page */
 @media print {
     .sidebar, .topbar, .no-print { display: none !important; }

@@ -6,6 +6,50 @@
 {% endblock %}
 
 {% block content %}
+{% macro finance_insights() %}
+{% set spent = expenses + allocated %}
+{% set utilization = ((spent / contributions * 100) | round(1)) if contributions else 0 %}
+{% set avail_pct = ((available / contributions * 100) | round(1)) if contributions else 0 %}
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Fund Interpretation &amp; Stewardship</h6>
+    </div>
+    <p class="small text-muted mb-2">
+        This view translates the fund figures into a clear picture of how institutional resources are being managed and where attention may be needed.
+    </p>
+    <ul class="small text-muted mb-0 ps-3">
+        {% if contributions == 0 %}
+        <li>No contributions recorded yet. Income must be logged before fund utilization can be meaningfully assessed.</li>
+        {% else %}
+        <li class="mb-1">Of the <strong>&#8369; {{ "{:,.0f}".format(contributions) }}</strong> collected, <strong>{{ '{:,.0f}'.format(spent) }}</strong> (<strong>{{ '%.1f'|format(utilization) }}%</strong>) has been obligated to expenses and allocations, leaving <strong>&#8369; {{ "{:,.0f}".format(available) }}</strong> (<strong>{{ '%.1f'|format(avail_pct) }}%</strong>) available.</li>
+        <li class="mb-1">
+            {% if avail_pct >= 50 %}A sizable share of funds (<strong>{{ '%.1f'|format(avail_pct) }}%</strong>) remains available, providing cushion — however, idle funds may indicate extension activities are not yet fully rolled out.
+            {% elif avail_pct >= 20 %}The fund utilization rate reflects an active extension program; the remaining reserve is available to sustain ongoing and upcoming activities.
+            {% else %}<strong>{{ '%.1f'|format(avail_pct) }}%</strong> is all that remains — most funds are already committed or spent. Careful planning is needed to avoid shortfalls before the next contributions.{% endif %}
+        </li>
+        {% endif %}
+    </ul>
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <div class="border rounded p-2 small text-muted">
+                <strong class="text-primary">Budget execution:</strong>
+                Comparing contributions against expenses and allocations reveals whether resources are advancing institutional extension objectives or being under-utilized.
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 small text-muted">
+                <strong class="text-primary">Accountability &amp; audit-readiness:</strong> A transparent fund trail supports accurate institutional financial reporting and reinforces trust among member-contributors and partners.
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 small text-muted">
+                <strong class="text-primary">Decision support:</strong> These figures guide whether to approve new activities, reallocate funds, solicit additional contributions, or pause expenditures.
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Financial Dashboard</h4>
@@ -64,6 +108,8 @@
         </div>
     </div>
 </div>
+
+{{ finance_insights() }}
 
 <div class="row g-3">
     <div class="col-lg-6">

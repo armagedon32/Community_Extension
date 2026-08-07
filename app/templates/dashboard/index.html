@@ -6,6 +6,56 @@
 {% endblock %}
 
 {% block content %}
+{% macro dashboard_insights() %}
+{% set total = total_projects or 0 %}
+{% set ns = namespace(top_cat='n/a', top_cat_n=0, top_seg='n/a', top_seg_n=0) %}
+{% for k, v in category_dist.items() %}{% if v > ns.top_cat_n %}{% set ns.top_cat_n = v %}{% set ns.top_cat = k %}{% endif %}{% endfor %}
+{% for k, v in beneficiary_segments.items() %}{% if v > ns.top_seg_n %}{% set ns.top_seg_n = v %}{% set ns.top_seg = k %}{% endif %}{% endfor %}
+{% set comp = status_dist.get('Completed', 0) or 0 %}
+{% set prog = status_dist.get('Ongoing', 0) or 0 %}
+{% set comp_pct = ((comp / total * 100) | round(0)) if total else 0 %}
+{% set prog_pct = ((prog / total * 100) | round(0)) if total else 0 %}
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Executive Summary &amp; Interpretation</h6>
+    </div>
+    <p class="small text-muted mb-2">
+        The dashboard reflects the institution's community-extension portfolio at a glance. Below is what the numbers mean for planning and resource allocation.
+    </p>
+    <ul class="small text-muted mb-0 ps-3">
+        {% if total == 0 %}
+        <li>No project records have been entered yet. Register projects, partners, and beneficiaries so the dashboard can begin to reflect institutional activity.</li>
+        {% else %}
+        <li class="mb-1">The institution manages <strong>{{ total }}</strong> community-extension projects reaching <strong>{{ total_beneficiaries }}</strong> beneficiaries through <strong>{{ total_partners }}</strong> partner organizations.</li>
+        <li class="mb-1">Project lifecycle: <strong>{{ comp }}</strong> completed (<strong>{{ '%.0f'|format(comp_pct) }}%</strong>), <strong>{{ prog }}</strong> ongoing (<strong>{{ '%.0f'|format(prog_pct) }}%</strong>), and <strong>{{ projects_proposed }}</strong> still in the proposal stage. A healthy pipeline balances finished deliverables with a steady stream of new initiatives to sustain impact.</li>
+        {% endif %}
+    </ul>
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <div class="border rounded p-2 small text-muted">
+                <strong class="text-primary">What it means for strategic planning:</strong>
+                {% if total %}
+                The leading project category is <strong>{{ ns.top_cat }}</strong> ({{ ns.top_cat_n }} project{{ 's' if ns.top_cat_n != 1 else '' }}), indicating where institutional extension effort is currently concentrated and where future capacity could be reinforced or rebalanced.
+                {% else %}No project-category data yet.{% endif %}
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 small text-muted">
+                <strong class="text-primary">Beneficiary reach:</strong>
+                The largest beneficiary segment is <strong>{{ ns.top_seg }}</strong> ({{ ns.top_seg_n }}), showing which population is most served — a basis for deciding whether to deepen service here or expand to underserved segments.
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 small text-muted">
+                <strong class="text-primary">Readiness for decision-making:</strong>
+                figures here directly inform institutional reporting against extension objectives, strengthen MOA and budget justifications, and provide evidence for proposals to partners and funding bodies.
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Information Management Dashboard</h4>
@@ -92,6 +142,8 @@
         </div>
     </div>
 </div>
+
+{{ dashboard_insights() }}
 
 <div class="row g-3 mb-4">
     <div class="col-lg-6">

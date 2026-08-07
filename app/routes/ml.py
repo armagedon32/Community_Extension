@@ -222,8 +222,47 @@ def classify_document(doc_id):
     return redirect(url_for("ml.list_documents"))
 
 
+def _ensure_models():
+    """Train any missing classifier on-demand so classification always works.
+
+    Returns True if both requested classifiers (type + domain) are ready.
+    """
+    from app.ml import engine
+
+    trained = {}
+    docs = (
+        Document.query
+        .filter(Document.is_training.is_(True), Document.category.isnot(None))
+        .all()
+    )
+    if engine.load_model("type")[0] is None and len(docs) >= 3:
+        model, vectorizer, metrics = engine.train_naive_bayes(
+            [d.content or "" for d in docs],
+            [d.category for d in docs],
+        )
+        engine.save_model(model, vectorizer, metrics["classes"], "type")
+        trained["type"] = True
+
+    domain_docs = (
+        Document.query
+        .filter(Document.is_training.is_(True), Document.domain.isnot(None))
+        .all()
+    )
+    if engine.load_model("domain")[0] is None and len(domain_docs) >= 3:
+        d_model, d_vec, d_metrics = engine.train_domain_model(
+            [d.content or "" for d in domain_docs],
+            [d.domain for d in domain_docs],
+        )
+        engine.save_model(d_model, d_vec, d_metrics["classes"], "domain")
+        trained["domain"] = True
+
+    return trained
+
+
 def _classify_and_store(doc):
     from app.ml.engine import classify_text, classify_domain
+
+    _ensure_models()
 
     predicted, scores = classify_text(doc.content)
     if predicted:
@@ -233,11 +272,11 @@ def _classify_and_store(doc):
         doc.predicted_domain = predicted_domain
     db.session.commit()
 
-    if predicted or predicted_domain:
-        parts = [p for p in (predicted, predicted_domain) if p]
+    parts = [p for p in (predicted, predicted_domain) if p]
+    if parts:
         flash(f"Document classified as: {' / '.join(parts)}", "success")
     else:
-        flash("Document added. Train the model first to enable classification.", "warning")
+        flash("Unable to classify this document (not enough training data yet).", "warning")
 
 
 @ml_bp.route("/ml")

@@ -118,15 +118,18 @@ def _predict_missing(doc):
 def _scan_unclassified():
     """Auto-scan so every document shows a project category on page load.
 
-    Predicts the *project category* (and type) for any document that is
-    missing it, whether fully unlabeled or only partially labeled.
+    Re-reads the content from the stored file for any document whose content
+    is empty (e.g. uploaded before PDF text extraction existed), then predicts
+    the *project category* (and type) from that scanned content.
     """
     docs = (
         Document.query
-        .filter(Document.content.isnot(None))
+        .order_by(Document.created_at.desc())
         .all()
     )
     for doc in docs:
+        if not doc.content and doc.filename:
+            doc.content = _read_uploaded_text(doc.filename)
         if not (doc.domain or doc.predicted_domain) or not (doc.category or doc.predicted_category):
             _predict_missing(doc)
     db.session.commit()

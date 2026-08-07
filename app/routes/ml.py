@@ -77,6 +77,7 @@ def _delete_doc_file(filename):
 @ml_bp.route("/ml/documents")
 @login_required
 def list_documents():
+    _scan_unclassified()
     documents = Document.query.order_by(Document.created_at.desc()).all()
     return render_template(
         "ml/documents.html",
@@ -84,6 +85,39 @@ def list_documents():
         DOCUMENT_CATEGORIES=DOCUMENT_CATEGORIES,
         PROJECT_CATEGORIES=PROJECT_CATEGORIES,
     )
+
+
+def _scan_unclassified():
+    """Auto-scan every unlabeled document so its project category always shows.
+
+    Any document without a manual label and without a stored prediction is
+    classified on the fly when the ML Documents page is opened. Static-safe:
+    once a prediction is stored it is not recomputed.
+    """
+    from app.ml.engine import classify_text, classify_domain
+
+    docs = (
+        Document.query
+        .filter(Document.category.is_(None), Document.domain.is_(None))
+        .all()
+    )
+    unclassified = [d for d in docs if not (d.predicted_category or d.predicted_domain)]
+    if not unclassified:
+        return
+    _ensure_models()
+    for doc in unclassified:
+        if not doc.content:
+            continue
+        try:
+            pred, _ = classify_text(doc.content)
+            if pred:
+                doc.predicted_category = pred
+            pd, _ = classify_domain(doc.content)
+            if pd:
+                doc.predicted_domain = pd
+        except Exception:
+            continue
+    db.session.commit()
 
 
 @ml_bp.route("/ml/documents/new", methods=["GET", "POST"])

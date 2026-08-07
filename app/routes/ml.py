@@ -87,36 +87,48 @@ def list_documents():
     )
 
 
-def _scan_unclassified():
-    """Auto-scan every unlabeled document so its project category always shows.
+def _predict_missing(doc):
+    """Predict any field that a document is still missing.
 
-    Any document without a manual label and without a stored prediction is
-    classified on the fly when the ML Documents page is opened. Static-safe:
-    once a prediction is stored it is not recomputed.
+    A document may be labeled for its *document type* but have no *project
+    category* (or vice versa). This fills the empty one without overwriting
+    the existing label.
     """
     from app.ml.engine import classify_text, classify_domain
 
-    docs = (
-        Document.query
-        .filter(Document.category.is_(None), Document.domain.is_(None))
-        .all()
-    )
-    unclassified = [d for d in docs if not (d.predicted_category or d.predicted_domain)]
-    if not unclassified:
+    if not doc.content:
         return
     _ensure_models()
-    for doc in unclassified:
-        if not doc.content:
-            continue
+    if doc.category is None and not doc.predicted_category:
         try:
             pred, _ = classify_text(doc.content)
             if pred:
                 doc.predicted_category = pred
-            pd, _ = classify_domain(doc.content)
-            if pd:
-                doc.predicted_domain = pd
         except Exception:
-            continue
+            pass
+    if doc.domain is None and not doc.predicted_domain:
+        try:
+            p_dom, _ = classify_domain(doc.content)
+            if p_dom:
+                doc.predicted_domain = p_dom
+        except Exception:
+            pass
+
+
+def _scan_unclassified():
+    """Auto-scan so every document shows a project category on page load.
+
+    Predicts the *project category* (and type) for any document that is
+    missing it, whether fully unlabeled or only partially labeled.
+    """
+    docs = (
+        Document.query
+        .filter(Document.content.isnot(None))
+        .all()
+    )
+    for doc in docs:
+        if not (doc.domain or doc.predicted_domain) or not (doc.category or doc.predicted_category):
+            _predict_missing(doc)
     db.session.commit()
 
 
@@ -158,10 +170,16 @@ def add_document():
         db.session.add(doc)
         db.session.commit()
 
+        _predict_missing(doc)
+        db.session.commit()
+
         if is_training and (category or domain):
             flash("Labeled document added. Retrain the model to include it.", "success")
+        elif doc.predicted_category or doc.predicted_domain:
+            parts = [p for p in (doc.predicted_category, doc.predicted_domain) if p]
+            flash(f"Document scanned. Project category detected: {parts[-1]}", "success")
         else:
-            _classify_and_store(doc)
+            flash("Document saved. Could not auto-detect a category for this content yet.", "warning")
         return redirect(url_for("ml.list_documents"))
 
     return render_template(

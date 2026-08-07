@@ -212,6 +212,13 @@
 
     const statusColors = { "Proposed": "#64748b", "Ongoing": "#f59e0b", "Completed": "#16a34a" };
 
+    // Tooltip formatter: append percentage of the whole for each data point.
+    function withPct(summary) {
+        const vals = Object.values(summary);
+        const total = vals.reduce((a, b) => a + b, 0);
+        return (v) => total ? `${v} (${((v / total) * 100).toFixed(1)}%)` : String(v);
+    }
+
     new ApexCharts(document.querySelector("#statusChart"), {
         chart: { type: "donut", height: 280 },
         labels: Object.keys(statusData),
@@ -220,7 +227,7 @@
         legend: { position: "bottom" },
         plotOptions: { pie: { donut: { size: "65%" } } },
         dataLabels: { enabled: false },
-        tooltip: { y: { formatter: v => v + " projects" } }
+        tooltip: { y: { formatter: withPct(statusData) } }
     }).render();
 
     new ApexCharts(document.querySelector("#categoryChart"), {
@@ -230,7 +237,8 @@
         colors: ["#1a4d8f"],
         plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
         dataLabels: { enabled: false },
-        grid: { borderColor: "#e2e8f0" }
+        grid: { borderColor: "#e2e8f0" },
+        tooltip: { y: { formatter: withPct(categoryData) } }
     }).render();
 
     new ApexCharts(document.querySelector("#segmentChart"), {
@@ -238,7 +246,8 @@
         labels: Object.keys(segmentData),
         series: Object.values(segmentData),
         legend: { position: "bottom" },
-        dataLabels: { enabled: false }
+        dataLabels: { enabled: false },
+        tooltip: { y: { formatter: withPct(segmentData) } }
     }).render();
 
     new ApexCharts(document.querySelector("#partnerChart"), {
@@ -246,7 +255,8 @@
         labels: Object.keys(partnerData),
         series: Object.values(partnerData),
         legend: { position: "bottom" },
-        dataLabels: { enabled: false }
+        dataLabels: { enabled: false },
+        tooltip: { y: { formatter: withPct(partnerData) } }
     }).render();
 
     new ApexCharts(document.querySelector("#activityChart"), {
@@ -256,7 +266,8 @@
         colors: ["#0d9488"],
         plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
         dataLabels: { enabled: false },
-        grid: { borderColor: "#e2e8f0" }
+        grid: { borderColor: "#e2e8f0" },
+        tooltip: { y: { formatter: withPct(activityData) } }
     }).render();
 </script>
 {% endblock %}

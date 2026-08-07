@@ -18,7 +18,6 @@ An AI-driven, outcomes-based Management Information System built with **Python F
   - **Document Type** — Proposal, Activity Design, Accomplishment Report, M&amp;E Report, MOA, Stakeholder Feedback.
   - **Project Category / Domain** — Education, Livelihood, Governance, Environment, Health, Technology, etc.
   Upload labeled extension documents, train both models, and auto-classify new documents — the system returns both the document type and the project domain. Performance is evaluated using **accuracy, precision, recall, F1-score, and confusion matrices** (ApexCharts heatmaps).
-- **ISO/IEC 25010 Evaluation** — Built-in questionnaire covering the 8 quality characteristics (Functional Suitability, Performance Efficiency, Compatibility, Usability, Reliability, Security, Maintainability, Safety) with automatic mean and overall score computation.
 - **Contribution Funds** — Financial dashboard, transactions (contributions/expenses/allocations), and member contribution tracking.
 - **MISP-A Data Collection** — Mobile-friendly field survey module. Create survey templates with scale, choice, number, and text questions; collect data from the field; and visualize average indicator scores and locations visited (ApexCharts).
 

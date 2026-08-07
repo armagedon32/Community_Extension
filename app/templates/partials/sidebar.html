@@ -35,9 +35,6 @@
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('ml.') %}active{% endif %}" href="{{ url_for('ml.dashboard') }}">
             <i class="bi bi-cpu"></i> Machine Learning Lab
         </a>
-        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('evaluations.') %}active{% endif %}" href="{{ url_for('evaluations.results') }}">
-            <i class="bi bi-clipboard-data"></i> ISO 25010 Evaluation
-        </a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('sentiment.') %}active{% endif %}" href="{{ url_for('sentiment.dashboard') }}">
             <i class="bi bi-emoji-smile"></i> Feedback Sentiment
         </a>

@@ -37,17 +37,6 @@ DOCUMENT_CATEGORIES = [
     "Other",
 ]
 
-EVALUATION_CHARACTERISTICS = [
-    "Functional Suitability",
-    "Performance Efficiency",
-    "Compatibility",
-    "Usability",
-    "Reliability",
-    "Security",
-    "Maintainability",
-    "Safety",
-]
-
 TRANSACTION_TYPES = ["Contribution", "Expense", "Allocation"]
 TRANSACTION_STATUSES = ["Active", "Inactive"]
 
@@ -277,36 +266,6 @@ class MLModel(db.Model):
 
     def __repr__(self):
         return f"<MLModel {self.name}>"
-
-
-class EvaluationItem(db.Model):
-    """ISO/IEC 25010 evaluation questionnaire item."""
-    __tablename__ = "evaluation_items"
-
-    id = db.Column(db.Integer, primary_key=True)
-    characteristic = db.Column(db.String(50), nullable=False)
-    indicator = db.Column(db.String(255), nullable=False)
-
-    responses = db.relationship("EvaluationResponse", backref="item", lazy=True)
-
-    def __repr__(self):
-        return f"<EvaluationItem {self.characteristic}>"
-
-
-class EvaluationResponse(db.Model):
-    """A single evaluator score (Likert 1-5) for an evaluation item."""
-    __tablename__ = "evaluation_responses"
-
-    id = db.Column(db.Integer, primary_key=True)
-    item_id = db.Column(db.Integer, db.ForeignKey("evaluation_items.id"), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
-    score = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    responder = db.relationship("User", backref="evaluation_responses")
-
-    def __repr__(self):
-        return f"<EvaluationResponse {self.item_id}:{self.score}>"
 
 
 class FinancialTransaction(db.Model):

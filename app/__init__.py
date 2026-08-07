@@ -39,7 +39,6 @@ def create_app(config_class=Config):
     from app.routes.moas import moas_bp
     from app.routes.reports import reports_bp
     from app.routes.ml import ml_bp
-    from app.routes.evaluations import evals_bp
     from app.routes.finance import finance_bp
     from app.routes.surveys import surveys_bp
     from app.routes.sentiment import sentiment_bp
@@ -57,7 +56,6 @@ def create_app(config_class=Config):
     app.register_blueprint(moas_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(ml_bp)
-    app.register_blueprint(evals_bp)
     app.register_blueprint(finance_bp)
     app.register_blueprint(surveys_bp)
     app.register_blueprint(sentiment_bp)

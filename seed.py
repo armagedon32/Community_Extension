@@ -11,7 +11,6 @@ from app.models import (
     BeneficiaryGroup,
     DataCollectionSurvey,
     Document,
-    EvaluationItem,
     FinancialTransaction,
     MOA,
     Member,
@@ -383,59 +382,6 @@ def run_seed(reset=True, app=None):
                 is_training=True,
                 uploaded_by=users[0].id,
             ))
-        db.session.commit()
-    
-        # Evaluation items (ISO/IEC 25010 questionnaire)
-        evaluation_items = {
-            "Functional Suitability": [
-                "The system provides all essential features for managing community extension programs.",
-                "The classification results are accurate and appropriate.",
-                "The system generates complete and correct analytics and reports.",
-                "All core processes function as intended.",
-            ],
-            "Performance Efficiency": [
-                "The system loads and responds quickly.",
-                "The system remains responsive during simultaneous processes.",
-                "The system shortens the time required to process documents and reports.",
-                "System outputs are generated promptly.",
-            ],
-            "Compatibility": [
-                "The system works properly on different devices (desktop, laptop, tablet).",
-                "The system functions across various browsers and operating systems.",
-                "The system interface displays correctly on all supported platforms.",
-            ],
-            "Usability": [
-                "The system is easy to learn for first-time users.",
-                "Navigation and layout are clear and user-friendly.",
-                "Instructions, buttons, and labels are easy to understand.",
-                "Users can efficiently complete tasks.",
-            ],
-            "Reliability": [
-                "The system operates smoothly without crashing or interruption.",
-                "The system performs consistently even during heavy use.",
-                "Data is stored and retrieved accurately.",
-                "The system produces consistent results.",
-            ],
-            "Security": [
-                "User data is protected from unauthorized access.",
-                "Login authentication and account management are secure.",
-                "Sensitive data is securely stored and transmitted.",
-            ],
-            "Maintainability": [
-                "The system's code and architecture are organized and easy to update.",
-                "Components are modular, allowing efficient maintenance.",
-                "Errors can be fixed without disrupting other functionalities.",
-                "Documentation is sufficient for ongoing maintenance.",
-            ],
-            "Safety": [
-                "The system maintains data integrity and prevents errors.",
-                "The system protects against risks associated with incorrect data handling.",
-                "System operations do not cause harm or disadvantage to stakeholders.",
-            ],
-        }
-        for char, indicators in evaluation_items.items():
-            for indicator in indicators:
-                db.session.add(EvaluationItem(characteristic=char, indicator=indicator))
         db.session.commit()
     
         # Financial seed data

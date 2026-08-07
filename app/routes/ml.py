@@ -79,9 +79,16 @@ def _delete_doc_file(filename):
 def list_documents():
     _scan_unclassified()
     documents = Document.query.order_by(Document.created_at.desc()).all()
+
+    from app.ml.engine import extract_objective
+    objectives = {
+        doc.id: extract_objective(doc.content) for doc in documents if doc.content
+    }
+
     return render_template(
         "ml/documents.html",
         documents=documents,
+        objectives=objectives,
         DOCUMENT_CATEGORIES=DOCUMENT_CATEGORIES,
         PROJECT_CATEGORIES=PROJECT_CATEGORIES,
     )

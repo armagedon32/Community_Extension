@@ -12,6 +12,7 @@ Two independent Multinomial Naive Bayes models are trained:
 """
 import json
 import os
+import re
 
 import joblib
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -166,3 +167,50 @@ def train_domain_model(texts, labels):
 def classify_domain(text):
     """Predict the project category/domain of an unseen document."""
     return _classify(text, "domain")
+
+
+# --- Content objective extraction --------------------------------------------
+
+_OBJECTIVE_SIGNALS = [
+    "objective", "purpose", "pursuant", "WHEREAS", "witnesseth", "whereas",
+    "agree", "agrees", "undertake", "establish", "implement", "provide",
+    "deliver", "initiate", "collaborat", "partnership", "assist", "commit",
+    "intends to", "aims to", "is to", "jointly", "community", "program",
+    "shall", "services", "train", "render", "cooperation",
+]
+
+
+def _split_sentences(text):
+    parts = re.split(r"(?<=[.!?])\s+", text or "")
+    return [s.strip() for s in parts if len(s.split()) > 4]
+
+
+def extract_objective(content, max_chars=260):
+    """Return a short extractive objective of the document content.
+
+    Sentence-frequency heuristic: sentences that carry action/purpose signal
+    words are ranked, and the best one (plus a strong runner-up that fits) is
+    returned. Falls back to the raw opening text when no sentences are found.
+    """
+    sents = _split_sentences(content)
+    if not sents:
+        return (content or "").strip()[:max_chars]
+
+    scored = []
+    for i, s in enumerate(sents):
+        low = s.lower()
+        score = sum(1 for w in _OBJECTIVE_SIGNALS if w.lower() in low)
+        if any(v in low for v in ("agree", "shall", "aims to", "is to", "shall provide", "jointly")):
+            score += 2
+        scored.append((score, i, s))
+
+    scored.sort(key=lambda t: (-t[0], t[1]))
+    result = scored[0][2]
+    for _, _, other in scored[1:]:
+        if other != result and len(result) + len(other) <= max_chars:
+            result += " " + other
+            break
+
+    if len(result) > max_chars:
+        result = result[:max_chars].rsplit(" ", 1)[0] + "…"
+    return result

@@ -57,7 +57,12 @@
                             <span class="badge text-bg-success">{{ d.predicted_domain or '—' }}</span>
                             {% else %}—{% endif %}
                         </td>
-                        <td class="small text-muted">{{ d.content[:60] }}{% if d.content|length > 60 %}...{% endif %}</td>
+                        <td class="small text-muted">
+                            {% if objectives.get(d.id) %}
+                            <span class="text-uppercase fw-semibold text-primary" style="font-size:.68rem; letter-spacing:.05em;">Objective</span><br>
+                            {{ objectives.get(d.id) }}
+                            {% else %}—{% endif %}
+                        </td>
                         <td class="text-end">
                             {% if not d.category and not d.domain %}
                             <form method="POST" action="{{ url_for('ml.classify_document', doc_id=d.id) }}" class="d-inline">

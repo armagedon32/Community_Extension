@@ -217,6 +217,7 @@
 <script>
 function renderHeatmap(sel, classes, cm) {
     if (!classes || !cm) return;
+    const rowTotals = cm.map(r => r.reduce((a, b) => a + b, 0));
     new ApexCharts(document.querySelector(sel), {
         chart: { type: "heatmap", height: 300, toolbar: { show: false } },
         series: classes.map((cls, i) => ({
@@ -235,6 +236,14 @@ function renderHeatmap(sel, classes, cm) {
             }
         },
         dataLabels: { enabled: true },
+        tooltip: {
+            y: {
+                formatter: (val, { seriesIndex }) => {
+                    const tot = rowTotals[seriesIndex] || 0;
+                    return val + (tot ? " (" + ((val / tot) * 100).toFixed(1) + "%)" : "");
+                }
+            }
+        },
         xaxis: { labels: { style: { fontSize: "10px" } } },
         yaxis: { labels: { style: { fontSize: "10px" } } }
     }).render();

@@ -105,14 +105,21 @@
 
 {% block scripts %}
 <script>
+    const fundData = [{{ contributions }}, {{ expenses }}, {{ allocated }}, {{ available }}];
+    const fundTotal = fundData.reduce((a, b) => a + b, 0);
     new ApexCharts(document.querySelector("#fundChart"), {
         chart: { type: "donut", height: 280 },
         labels: ["Contributions", "Expenses", "Allocations", "Available"],
-        series: [{{ contributions }}, {{ expenses }}, {{ allocated }}, {{ available }}],
+        series: fundData,
         colors: ["#16a34a", "#dc2626", "#f59e0b", "#1a4d8f"],
         legend: { position: "bottom" },
         dataLabels: { enabled: false },
-        tooltip: { y: { formatter: v => "₱ " + v.toLocaleString() } }
+        tooltip: {
+            y: {
+                formatter: (v) => "₱ " + v.toLocaleString() +
+                    (fundTotal ? " (" + ((v / fundTotal) * 100).toFixed(1) + "%)" : "")
+            }
+        }
     }).render();
 </script>
 {% endblock %}

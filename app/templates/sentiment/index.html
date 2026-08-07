@@ -1,0 +1,167 @@
+{% extends 'base.html' %}
+{% block title %}Stakeholder Sentiment - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Stakeholder Feedback Sentiment Analysis</h4>
+        <span class="text-muted small">Natural Language Processing of feedback texts</span>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ summary.total }}</div>
+            <div class="label">Feedback Texts</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ summary.counts['Positive'] }}</div>
+            <div class="label">Positive ({{ '%.1f'|format(summary.pos_pct) }}%)</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ summary.counts['Neutral'] }}</div>
+            <div class="label">Neutral ({{ '%.1f'|format(summary.neu_pct) }}%)</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-danger">{{ summary.counts['Negative'] }}</div>
+            <div class="label">Negative ({{ '%.1f'|format(summary.neg_pct) }}%)</div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Interpretation</h6>
+    </div>
+    <p class="small text-muted mb-0">{{ insight }}</p>
+    {% if summary.total %}
+    <ul class="small text-muted ps-3 mb-0 mt-2">
+        <li>Overall mean sentiment score: <strong>{{ '%.3f'|format(summary.mean_score) }}</strong> (on a −1 to +1 scale, positive = favorable).</li>
+        <li>
+            {% if summary.pos_pct > 60 %}A clear majority of feedback is favorable, indicating stakeholder satisfaction and support that can be highlighted in institutional reporting and renewal proposals.
+            {% elif summary.neg_pct > 40 %}A notable share of feedback is negative — treat these as priorities for improvement and responsive action.
+            {% else %}Sentiment is mixed; the institution can target the negative items while reinforcing the positive themes identified below.{% endif %}
+        </li>
+    </ul>
+    {% endif %}
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Sentiment Distribution</h6>
+            <div id="sentimentChart"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Frequent Keywords</h6>
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <div class="border rounded p-2 h-100">
+                        <span class="badge text-bg-success mb-1">Positive</span>
+                        <ul class="small text-muted mb-0 ps-3">
+                            {% for w, n in top_pos %}<li>{{ w }} <span class="text-secondary">(×{{ n }})</span></li>{% else %}<li>No positive terms yet.</li>{% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="border rounded p-2 h-100">
+                        <span class="badge text-bg-danger mb-1">Negative</span>
+                        <ul class="small text-muted mb-0 ps-3">
+                            {% for w, n in top_neg %}<li>{{ w }} <span class="text-secondary">(×{{ n }})</span></li>{% else %}<li>No negative terms yet.</li>{% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <p class="small text-muted mt-2 mb-0">These keywords show <em>why</em> feedback skews positive or negative, guiding which concerns to act on first.</p>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Feedback Item Analysis</h6>
+        <span class="text-muted small">{{ summary.total }} texts</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+                <tr><th>Source</th><th>Feedback Text</th><th>Sentiment</th><th class="text-end">Score</th></tr>
+            </thead>
+            <tbody>
+                {% for r in results %}
+                <tr>
+                    <td><span class="badge text-bg-light border text-dark">{{ r.source }}</span></td>
+                    <td class="small">
+                        <a href="#" class="text-decoration-none" data-bs-toggle="modal" data-bs-target="#fb{{ loop.index0 }}">{{ r.text[:80] }}{% if r.text|length > 80 %}…{% endif %}</a>
+                    </td>
+                    <td>
+                        {% if r.label == 'Positive' %}<span class="badge text-bg-success">Positive</span>
+                        {% elif r.label == 'Negative' %}<span class="badge text-bg-danger">Negative</span>
+                        {% else %}<span class="badge text-bg-info">Neutral</span>{% endif %}
+                    </td>
+                    <td class="text-end small fw-semibold">{{ '%.3f'|format(r.score) }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted">No feedback recorded yet.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{# Modals to view the full feedback text #}
+{% for r in results %}
+<div class="modal fade" id="fb{{ loop.index0 }}" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    {% if r.label == 'Positive' %}<span class="badge text-bg-success">Positive</span>
+                    {% elif r.label == 'Negative' %}<span class="badge text-bg-danger">Negative</span>
+                    {% else %}<span class="badge text-bg-info">Neutral</span>{% endif %}
+                    {{ r.title }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" style="white-space:pre-wrap;">{{ r.text }}</div>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const counts = {
+        "Positive": {{ summary.counts['Positive'] }},
+        "Neutral": {{ summary.counts['Neutral'] }},
+        "Negative": {{ summary.counts['Negative'] }}
+    };
+    const total = Object.values(counts).reduce((a, b) => a + b, 0);
+    new ApexCharts(document.querySelector("#sentimentChart"), {
+        chart: { type: "donut", height: 300 },
+        labels: Object.keys(counts),
+        series: Object.values(counts),
+        colors: ["#16a34a", "#0891b2", "#dc2626"],
+        legend: { position: "bottom" },
+        dataLabels: { enabled: false },
+        tooltip: {
+            y: { formatter: (v) => total ? v + " (" + ((v / total) * 100).toFixed(1) + "%)" : String(v) }
+        }
+    }).render();
+</script>
+{% endblock %}

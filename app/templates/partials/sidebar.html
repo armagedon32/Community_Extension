@@ -35,6 +35,9 @@
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('evaluations.') %}active{% endif %}" href="{{ url_for('evaluations.results') }}">
             <i class="bi bi-clipboard-data"></i> ISO 25010 Evaluation
         </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('sentiment.') %}active{% endif %}" href="{{ url_for('sentiment.dashboard') }}">
+            <i class="bi bi-emoji-smile"></i> Feedback Sentiment
+        </a>
         <div class="nav-section">Finance</div>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finance.') %}active{% endif %}" href="{{ url_for('finance.dashboard') }}">
             <i class="bi bi-wallet2"></i> Contribution Funds

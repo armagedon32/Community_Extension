@@ -42,6 +42,7 @@ def create_app(config_class=Config):
     from app.routes.evaluations import evals_bp
     from app.routes.finance import finance_bp
     from app.routes.surveys import surveys_bp
+    from app.routes.sentiment import sentiment_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -55,6 +56,7 @@ def create_app(config_class=Config):
     app.register_blueprint(evals_bp)
     app.register_blueprint(finance_bp)
     app.register_blueprint(surveys_bp)
+    app.register_blueprint(sentiment_bp)
 
     with app.app_context():
         db.create_all()

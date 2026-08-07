@@ -36,6 +36,8 @@
                         <td>
                             {% if d.category %}
                             <span class="badge text-bg-primary">{{ d.category }}</span>
+                            {% elif d.predicted_category %}
+                            <span class="badge text-bg-success" title="Predicted">{{ d.predicted_category }}</span>
                             {% else %}
                             <span class="badge text-bg-secondary">Unlabeled</span>
                             {% endif %}
@@ -43,6 +45,8 @@
                         <td>
                             {% if d.domain %}
                             <span class="badge text-bg-info">{{ d.domain }}</span>
+                            {% elif d.predicted_domain %}
+                            <span class="badge text-bg-success" title="Predicted project category">{{ d.predicted_domain }}</span>
                             {% else %}
                             <span class="badge text-bg-secondary">—</span>
                             {% endif %}

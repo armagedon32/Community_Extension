@@ -64,11 +64,6 @@
                             {% else %}—{% endif %}
                         </td>
                         <td class="text-end">
-                            {% if not d.category and not d.domain %}
-                            <form method="POST" action="{{ url_for('ml.classify_document', doc_id=d.id) }}" class="d-inline">
-                                <button class="btn btn-sm btn-outline-primary"><i class="bi bi-magic"></i> Classify</button>
-                            </form>
-                            {% endif %}
                             <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#del{{ d.id }}"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>

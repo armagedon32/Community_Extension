@@ -3,17 +3,47 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h4 class="fw-bold mb-0">Training Documents</h4>
-        <span class="text-muted small">Labeled documents for Naive Bayes training and documents to classify</span>
+        <div>
+            <h4 class="fw-bold mb-0">Training Documents</h4>
+            <span class="text-muted small">Labeled documents for Naive Bayes training and documents to classify</span>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('ml.add_document') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Document</a>
+            <form method="POST" action="{{ url_for('ml.train_model') }}">
+                <button type="submit" class="btn btn-outline-primary"><i class="bi bi-gear"></i> Train Model</button>
+            </form>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        <a href="{{ url_for('ml.add_document') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Document</a>
-        <form method="POST" action="{{ url_for('ml.train_model') }}">
-            <button type="submit" class="btn btn-outline-primary"><i class="bi bi-gear"></i> Train Model</button>
-        </form>
+
+    <div class="card mb-3">
+        <div class="card-body py-2">
+            <div class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <label class="form-label mb-0 small fw-semibold">Filter by Type Label</label>
+                    <select class="form-select form-select-sm" onchange="filterDocs(this, 'type')">
+                        <option value="">All Types</option>
+                        {% for c in DOCUMENT_CATEGORIES %}
+                        <option value="{{ c }}" {% if type_filter == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label mb-0 small fw-semibold">Filter by Project Category</label>
+                    <select class="form-select form-select-sm" onchange="filterDocs(this, 'domain')">
+                        <option value="">All Categories</option>
+                        {% for c in PROJECT_CATEGORIES %}
+                        <option value="{{ c }}" {% if domain_filter == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end justify-content-end">
+                    {% if type_filter or domain_filter %}
+                    <a href="{{ url_for('ml.list_documents') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-circle"></i> Clear Filters</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </div>
-</div>
 
 <div class="card">
     <div class="card-body p-0">
@@ -105,4 +135,15 @@
         </div>
     </div>
 </div>
+
+{% block scripts %}
+<script>
+function filterDocs(sel, which) {
+    var params = new URLSearchParams(window.location.search);
+    if (sel.value) { params.set(which, sel.value); } else { params.delete(which); }
+    var qs = params.toString();
+    window.location = window.location.pathname + (qs ? '?' + qs : '');
+}
+</script>
+{% endblock %}
 {% endblock %}

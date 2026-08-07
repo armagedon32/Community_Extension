@@ -78,7 +78,23 @@ def _delete_doc_file(filename):
 @login_required
 def list_documents():
     _scan_unclassified()
-    documents = Document.query.order_by(Document.created_at.desc()).all()
+
+    from sqlalchemy import or_
+
+    type_filter = (request.args.get("type") or "").strip()
+    domain_filter = (request.args.get("domain") or "").strip()
+
+    query = Document.query
+    if type_filter:
+        query = query.filter(
+            or_(Document.category == type_filter, Document.predicted_category == type_filter)
+        )
+    if domain_filter:
+        query = query.filter(
+            or_(Document.domain == domain_filter, Document.predicted_domain == domain_filter)
+        )
+
+    documents = query.order_by(Document.created_at.desc()).all()
 
     from app.ml.engine import extract_objective
     objectives = {
@@ -89,6 +105,8 @@ def list_documents():
         "ml/documents.html",
         documents=documents,
         objectives=objectives,
+        type_filter=type_filter,
+        domain_filter=domain_filter,
         DOCUMENT_CATEGORIES=DOCUMENT_CATEGORIES,
         PROJECT_CATEGORIES=PROJECT_CATEGORIES,
     )

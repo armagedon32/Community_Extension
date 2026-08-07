@@ -26,14 +26,46 @@ def _save_upload(file):
 
 
 def _read_uploaded_text(filename):
+    """Extract readable text from an uploaded document.
+
+    Supports plain text (.txt), PDF (.pdf) and Word (.docx). ``.doc`` files
+    have no pure-Python text extractor, so they fall back to a best-effort
+    raw read that is usually not useful for classification.
+    """
     path = os.path.join(_doc_folder(), os.path.basename(filename))
     if not os.path.exists(path):
         return ""
+
+    ext = (os.path.splitext(filename)[1] or "").lower()
     try:
+        if ext == ".pdf":
+            return _extract_pdf(path)
+        if ext == ".docx":
+            return _extract_docx(path)
+        if ext == ".doc":
+            with open(path, "rb") as f:
+                return f.read().decode("utf-8", errors="ignore")
         with open(path, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
     except Exception:
         return ""
+
+
+def _extract_pdf(path):
+    from pypdf import PdfReader
+    reader = PdfReader(path)
+    pages = [(page.extract_text() or "") for page in reader.pages]
+    return "\n".join(pages)
+
+
+def _extract_docx(path):
+    from docx import Document as DocxDocument
+    doc = DocxDocument(path)
+    parts = [p.text for p in doc.paragraphs]
+    for table in doc.tables:
+        for row in table.rows:
+            parts.append(" | ".join(cell.text for cell in row.cells))
+    return "\n".join(parts)
 
 
 def _delete_doc_file(filename):

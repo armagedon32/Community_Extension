@@ -11,10 +11,9 @@ from app.models import (
     BeneficiaryGroup,
     DataCollectionSurvey,
     Document,
+    Donation,
     FinancialTransaction,
     MOA,
-    Member,
-    MemberContribution,
     Partner,
     Project,
     SurveyQuestion,
@@ -385,20 +384,14 @@ def run_seed(reset=True, app=None):
         db.session.commit()
     
         # Financial seed data
-        members = []
-        for mname in ["John Reyes", "Sarah Lim", "Mike Tan", "Anna Cruz"]:
-            m = Member(name=mname, employee_id=f"KNS-{len(members)+1:03d}", department="Academic Affairs")
-            db.session.add(m)
-            members.append(m)
-        db.session.commit()
-    
-        for idx, m in enumerate(members):
+        for idx, p in enumerate(partners):
             amt = random.randint(200, 1500)
-            c = MemberContribution(member_id=m.id, amount=amt,
-                                   payment_date=datetime.date.today() - datetime.timedelta(days=idx * 15))
-            db.session.add(c)
+            donation = Donation(
+                partner_id=p.id, amount=amt,
+                payment_date=datetime.date.today() - datetime.timedelta(days=idx * 15))
+            db.session.add(donation)
             db.session.add(FinancialTransaction(
-                description=f"Member contribution — {m.name}",
+                description=f"Donation from {p.name}",
                 transaction_type="Contribution",
                 amount=amt,
                 project_id=projects[idx % len(projects)].id,

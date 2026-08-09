@@ -5,8 +5,9 @@ from flask_login import current_user, login_required
 
 from app import db
 from app.models import (
-    Member,
-    MemberContribution,
+    PARTNER_TYPES,
+    Donation,
+    Partner,
     Project,
     FinancialTransaction,
     TRANSACTION_TYPES,
@@ -48,9 +49,9 @@ def dashboard():
         FinancialTransaction.transaction_date.desc()
     ).limit(10).all()
 
-    # Member contributions summary
-    member_total = (
-        db.session.query(db.func.coalesce(db.func.sum(MemberContribution.amount), 0)).scalar() or 0
+    # Stakeholder donations summary
+    stakeholder_total = (
+        db.session.query(db.func.coalesce(db.func.sum(Donation.amount), 0)).scalar() or 0
     )
     active_funds = FinancialTransaction.query.filter_by(status="Active").count()
 
@@ -61,7 +62,7 @@ def dashboard():
         allocated=allocated,
         available=available,
         allocated_funds=active_funds,
-        member_total=float(member_total or 0),
+        stakeholder_total=float(stakeholder_total or 0),
         recent=transactions,
         TRANSACTION_TYPES=TRANSACTION_TYPES,
     )
@@ -115,63 +116,71 @@ def new_transaction():
     )
 
 
-@finance_bp.route("/finance/members")
+@finance_bp.route("/finance/stakeholders")
 @login_required
-def members():
-    members = Member.query.order_by(Member.name).all()
-    contributions = MemberContribution.query.order_by(MemberContribution.payment_date.desc()).all()
-    return render_template("finance/members.html", members=members, contributions=contributions)
+def stakeholders():
+    partners = Partner.query.order_by(Partner.name).all()
+    donations = Donation.query.order_by(Donation.payment_date.desc()).all()
+    return render_template(
+        "finance/stakeholders.html",
+        partners=partners,
+        donations=donations,
+        PARTNER_TYPES=PARTNER_TYPES,
+    )
 
 
-@finance_bp.route("/finance/members/new", methods=["POST"])
+@finance_bp.route("/finance/stakeholders/new", methods=["POST"])
 @login_required
-def new_member():
+def add_stakeholder():
     name = request.form.get("name", "").strip()
     if not name:
-        flash("Member name is required.", "danger")
-        return redirect(url_for("finance.members"))
-    member = Member(
+        flash("Stakeholder name is required.", "danger")
+        return redirect(url_for("finance.stakeholders"))
+    partner = Partner(
         name=name,
-        employee_id=request.form.get("employee_id", ""),
-        department=request.form.get("department", ""),
-        email=request.form.get("email", ""),
+        partner_type=request.form.get("partner_type", "Other"),
         status="Active",
+        engagement_level="Medium",
+        contact_person=request.form.get("contact_person", ""),
+        contact_number=request.form.get("contact_number", ""),
+        email=request.form.get("email", ""),
+        address=request.form.get("address", ""),
     )
-    db.session.add(member)
+    db.session.add(partner)
     db.session.commit()
-    flash("Member added successfully.", "success")
-    return redirect(url_for("finance.members"))
+    flash("Stakeholder added successfully.", "success")
+    return redirect(url_for("finance.stakeholders"))
 
 
-@finance_bp.route("/finance/contributions/new", methods=["POST"])
+@finance_bp.route("/finance/donations/new", methods=["POST"])
 @login_required
-def new_contribution():
-    member_id = request.form.get("member_id")
-    if not member_id:
-        flash("Please select a member.", "danger")
-        return redirect(url_for("finance.members"))
+def new_donation():
+    partner_id = request.form.get("partner_id")
+    if not partner_id:
+        flash("Please select a stakeholder.", "danger")
+        return redirect(url_for("finance.stakeholders"))
     try:
         amount = float(request.form.get("amount", 0) or 0)
     except ValueError:
         amount = 0
-    contribution = MemberContribution(
-        member_id=member_id,
+    donation = Donation(
+        partner_id=partner_id,
         amount=amount,
         payment_date=_parse_date(request.form.get("payment_date")),
         remarks=request.form.get("remarks", ""),
     )
-    db.session.add(contribution)
+    db.session.add(donation)
     db.session.commit()
     # Also reflect as a contribution transaction
-    member = db.session.get(Member, member_id)
+    partner = db.session.get(Partner, partner_id)
     tx = FinancialTransaction(
-        description=f"Member contribution — {member.name}" if member else "Member contribution",
+        description=f"Donation from {partner.name}" if partner else "Stakeholder donation",
         transaction_type="Contribution",
         amount=amount,
-        transaction_date=contribution.payment_date,
+        transaction_date=donation.payment_date,
         recorded_by=current_user.id,
     )
     db.session.add(tx)
     db.session.commit()
-    flash("Contribution recorded successfully.", "success")
-    return redirect(url_for("finance.members"))
+    flash("Donation recorded successfully.", "success")
+    return redirect(url_for("finance.stakeholders"))

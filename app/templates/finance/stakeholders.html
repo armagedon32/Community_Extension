@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% block title %}Stakeholders &amp; Donations - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Stakeholder Donations</h4>
+        <span class="text-muted small">Manage stakeholders and their donation contributions</span>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card p-4">
+            <h6 class="fw-bold mb-3">Add Stakeholder</h6>
+            <form method="POST" action="{{ url_for('finance.add_stakeholder') }}">
+                <div class="mb-3">
+                    <label class="form-label">Organization / Name *</label>
+                    <input type="text" name="name" class="form-control" required>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Stakeholder Type</label>
+                        <select name="partner_type" class="form-select">
+                            {% for t in PARTNER_TYPES %}
+                            <option value="{{ t }}">{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Contact Person</label>
+                        <input type="text" name="contact_person" class="form-control">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Contact Number</label>
+                        <input type="text" name="contact_number" class="form-control">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="email" class="form-control">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Address</label>
+                    <input type="text" name="address" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Add Stakeholder</button>
+            </form>
+        </div>
+        <div class="card p-4 mt-3">
+            <h6 class="fw-bold mb-3">Record Donation</h6>
+            <form method="POST" action="{{ url_for('finance.new_donation') }}">
+                <div class="mb-3">
+                    <label class="form-label">Stakeholder *</label>
+                    <select name="partner_id" class="form-select" required>
+                        <option value="">— Select —</option>
+                        {% for p in partners %}
+                        <option value="{{ p.id }}">{{ p.name }} ({{ p.partner_type }})</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Amount *</label>
+                        <input type="number" step="0.01" min="0" name="amount" class="form-control" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Donation Date</label>
+                        <input type="date" name="payment_date" class="form-control" value="{{ current_year }}-01-01">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Remarks</label>
+                    <input type="text" name="remarks" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Record Donation</button>
+            </form>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card p-4 mb-3">
+            <h6 class="fw-bold mb-3">Stakeholders &amp; Partners ({{ partners|length }})</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr><th>Name</th><th>Type</th><th>Status</th><th class="text-end">Total Donations</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for p in partners %}
+                        <tr>
+                            <td class="fw-semibold">{{ p.name }}</td>
+                            <td>{{ p.partner_type }}</td>
+                            <td><span class="badge text-bg-success">{{ p.status }}</span></td>
+                            <td class="text-end fw-semibold">&#8369; {{ "{:,.2f}".format(p.donations | sum(attribute='amount')) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No stakeholders yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="card p-4">
+            <h6 class="fw-bold mb-3">Donation History</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead>
+                        <tr><th>Date</th><th>Stakeholder</th><th class="text-end">Amount</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for d in donations %}
+                        <tr>
+                            <td>{{ d.payment_date.strftime('%b %d, %Y') }}</td>
+                            <td>{{ d.partner.name if d.partner else '—' }}</td>
+                            <td class="text-end fw-semibold">&#8369; {{ "{:,.2f}".format(d.amount) }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="3" class="text-center text-muted">No donations recorded.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

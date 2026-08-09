@@ -162,6 +162,7 @@ class Partner(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     moas = db.relationship("MOA", backref="partner", lazy=True)
+    donations = db.relationship("Donation", backref="partner", lazy=True)
 
     def __repr__(self):
         return f"<Partner {self.name}>"
@@ -290,30 +291,12 @@ class FinancialTransaction(db.Model):
         return f"<FinancialTransaction {self.description} {self.amount}>"
 
 
-class Member(db.Model):
-    """Member who contributes funds."""
-    __tablename__ = "members"
+class Donation(db.Model):
+    """Individual stakeholder (partner) donation record."""
+    __tablename__ = "donations"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(150), nullable=False)
-    employee_id = db.Column(db.String(50), nullable=True)
-    department = db.Column(db.String(120), nullable=True)
-    email = db.Column(db.String(120), nullable=True)
-    status = db.Column(db.String(20), nullable=False, default="Active")
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-
-    contributions = db.relationship("MemberContribution", backref="member", lazy=True)
-
-    def __repr__(self):
-        return f"<Member {self.name}>"
-
-
-class MemberContribution(db.Model):
-    """Individual member contribution payment record."""
-    __tablename__ = "member_contributions"
-
-    id = db.Column(db.Integer, primary_key=True)
-    member_id = db.Column(db.Integer, db.ForeignKey("members.id"), nullable=False)
+    partner_id = db.Column(db.Integer, db.ForeignKey("partners.id"), nullable=False)
     amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     payment_date = db.Column(db.Date, default=datetime.utcnow)
     status = db.Column(db.String(20), nullable=False, default="Active")
@@ -321,7 +304,7 @@ class MemberContribution(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def __repr__(self):
-        return f"<MemberContribution {self.member_id}:{self.amount}>"
+        return f"<Donation {self.partner_id}:{self.amount}>"
 
 
 # MISP-A data-collection survey module

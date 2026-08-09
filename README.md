@@ -18,7 +18,7 @@ An AI-driven, outcomes-based Management Information System built with **Python F
   - **Document Type** — Proposal, Activity Design, Accomplishment Report, M&amp;E Report, MOA, Stakeholder Feedback.
   - **Project Category / Domain** — Education, Livelihood, Governance, Environment, Health, Technology, etc.
   Upload labeled extension documents, train both models, and auto-classify new documents — the system returns both the document type and the project domain. Performance is evaluated using **accuracy, precision, recall, F1-score, and confusion matrices** (ApexCharts heatmaps).
-- **Contribution Funds** — Financial dashboard, transactions (contributions/expenses/allocations), and member contribution tracking.
+- **Contribution Funds** — Financial dashboard, transactions (contributions/expenses/allocations), and stakeholder (partner) donation tracking.
 - **MISP-A Data Collection** — Mobile-friendly field survey module. Create survey templates with scale, choice, number, and text questions; collect data from the field; and visualize average indicator scores and locations visited (ApexCharts).
 
 ## Tech Stack

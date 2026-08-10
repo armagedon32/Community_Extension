@@ -55,6 +55,22 @@ def dashboard():
     )
     active_funds = FinancialTransaction.query.filter_by(status="Active").count()
 
+    # Per-stakeholder donation breakdown (top donors first)
+    donor_rows = (
+        db.session.query(
+            Partner.name,
+            db.func.coalesce(db.func.sum(Donation.amount), 0).label("total"),
+        )
+        .join(Donation, Donation.partner_id == Partner.id)
+        .group_by(Partner.id)
+        .order_by(db.func.sum(Donation.amount).desc())
+        .all()
+    )
+    donors = [
+        {"name": name, "total": float(total or 0)}
+        for name, total in donor_rows
+    ]
+
     return render_template(
         "finance/dashboard.html",
         contributions=contributions,
@@ -63,6 +79,7 @@ def dashboard():
         available=available,
         allocated_funds=active_funds,
         stakeholder_total=float(stakeholder_total or 0),
+        donors=donors,
         recent=transactions,
         TRANSACTION_TYPES=TRANSACTION_TYPES,
     )

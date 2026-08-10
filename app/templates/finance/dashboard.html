@@ -64,44 +64,48 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="card stat-card p-3">
+        <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+             title="&lt;strong&gt;Total Cash Donations&lt;/strong&gt; —&lt;br&gt;Sum ng lahat ng donations mula sa stakeholders/partners.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; SUM(amount) kung saan transaction_type = 'Contribution'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-success">&#8369; {{ "{:,.0f}".format(contributions) }}</div>
-                    <div class="label">Total Cash Donations</div>
+                    <div class="label">Total Cash Donations <i class="bi bi-question-circle text-muted small"></i></div>
                 </div>
                 <div class="icon bg-soft-success"><i class="bi bi-arrow-down-circle"></i></div>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card stat-card p-3">
+        <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+             title="&lt;strong&gt;Total Expenses + Allocations&lt;/strong&gt; —&lt;br&gt;Kabuuang nagastos (Expense) + inilaan sa mga project (Allocation).&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; SUM(amount) ng 'Expense' + SUM(amount) ng 'Allocation'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-danger">&#8369; {{ "{:,.0f}".format(expenses + allocated) }}</div>
-                    <div class="label">Total Expenses + Allocations</div>
+                    <div class="label">Total Expenses + Allocations <i class="bi bi-question-circle text-muted small"></i></div>
                 </div>
                 <div class="icon bg-soft-danger"><i class="bi bi-arrow-up-circle"></i></div>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card stat-card p-3">
+        <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+             title="&lt;strong&gt;Available Funds&lt;/strong&gt; —&lt;br&gt;Natitirang pondo pagkatapos ibawas ang gastos at allocation.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; Contributions − Expenses − Allocations&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; computed mula sa financial_transactions">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-primary">&#8369; {{ "{:,.0f}".format(available) }}</div>
-                    <div class="label">Available Funds</div>
+                    <div class="label">Available Funds <i class="bi bi-question-circle text-muted small"></i></div>
                 </div>
                 <div class="icon bg-soft-primary"><i class="bi bi-cash-stack"></i></div>
             </div>
         </div>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="card stat-card p-3">
+        <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
+             title="&lt;strong&gt;Active Fund Records&lt;/strong&gt; —&lt;br&gt;Bilang ng aktibong financial transaction records (hindi ito halaga ng pera).&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; COUNT(*) kung saan status = 'Active'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-info">{{ allocated_funds }}</div>
-                    <div class="label">Active Fund Records</div>
+                    <div class="label">Active Fund Records <i class="bi bi-question-circle text-muted small"></i></div>
                 </div>
                 <div class="icon bg-soft-info"><i class="bi bi-pie-chart"></i></div>
             </div>

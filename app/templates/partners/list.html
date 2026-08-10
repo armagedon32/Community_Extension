@@ -10,6 +10,23 @@
     <a href="{{ url_for('partners.create_partner') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Partner</a>
 </div>
 
+<div class="card mb-3 p-3">
+    <form method="GET" action="{{ url_for('partners.list_partners') }}" class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label small mb-1">Filter by Support Type</label>
+            <select name="support_type" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All Support Types</option>
+                {% for s in SUPPORT_TYPES %}
+                <option value="{{ s }}" {% if support_filter == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-auto">
+            <a href="{{ url_for('partners.list_partners') }}" class="btn btn-outline-secondary btn-sm {% if not support_filter %}disabled{% endif %}">Clear</a>
+        </div>
+    </form>
+</div>
+
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
@@ -18,6 +35,7 @@
                     <tr>
                         <th>Partner</th>
                         <th>Type</th>
+                        <th>Support Type</th>
                         <th>Engagement</th>
                         <th>Contact</th>
                         <th>Status</th>
@@ -32,6 +50,11 @@
                             <div class="small text-muted">{{ p.address or '—' }}</div>
                         </td>
                         <td><span class="badge text-bg-light border">{{ p.partner_type }}</span></td>
+                        <td>
+                            {% if p.support_type == 'Both' %}<span class="badge text-bg-primary">Both</span>
+                            {% elif p.support_type %}<span class="badge text-bg-info">{{ p.support_type }}</span>
+                            {% else %}<span class="text-muted">—</span>{% endif %}
+                        </td>
                         <td>{{ p.engagement_level or '—' }}</td>
                         <td>
                             <div class="small fw-semibold">{{ p.contact_person or '—' }}</div>
@@ -62,7 +85,7 @@
                         </div>
                     </div>
                     {% else %}
-                    <tr><td colspan="6" class="text-center text-muted py-4">No partners yet.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">No partners yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

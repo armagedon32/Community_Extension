@@ -2,7 +2,7 @@ from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import login_required
 
 from app import db
-from app.models import MOA, Partner, PARTNER_TYPES
+from app.models import MOA, Partner, PARTNER_TYPES, SUPPORT_TYPES
 
 partners_bp = Blueprint("partners", __name__)
 
@@ -10,8 +10,18 @@ partners_bp = Blueprint("partners", __name__)
 @partners_bp.route("/partners")
 @login_required
 def list_partners():
-    partners = Partner.query.order_by(Partner.name).all()
-    return render_template("partners/list.html", partners=partners, PARTNER_TYPES=PARTNER_TYPES)
+    support_filter = request.args.get("support_type", "").strip()
+    query = Partner.query
+    if support_filter:
+        query = query.filter(Partner.support_type == support_filter)
+    partners = query.order_by(Partner.name).all()
+    return render_template(
+        "partners/list.html",
+        partners=partners,
+        PARTNER_TYPES=PARTNER_TYPES,
+        SUPPORT_TYPES=SUPPORT_TYPES,
+        support_filter=support_filter,
+    )
 
 
 @partners_bp.route("/partners/new", methods=["GET", "POST"])
@@ -25,6 +35,7 @@ def create_partner():
         partner = Partner(
             name=name,
             partner_type=request.form.get("partner_type", "LGU"),
+            support_type=request.form.get("support_type", "") or None,
             status=request.form.get("status", "Active"),
             engagement_level=request.form.get("engagement_level", ""),
             contact_person=request.form.get("contact_person", ""),
@@ -39,7 +50,7 @@ def create_partner():
         flash("Partner added successfully.", "success")
         return redirect(url_for("partners.view_partner", partner_id=partner.id))
 
-    return render_template("partners/form.html", partner=None, PARTNER_TYPES=PARTNER_TYPES)
+    return render_template("partners/form.html", partner=None, PARTNER_TYPES=PARTNER_TYPES, SUPPORT_TYPES=SUPPORT_TYPES)
 
 
 @partners_bp.route("/partners/<int:partner_id>")
@@ -57,6 +68,7 @@ def edit_partner(partner_id):
     if request.method == "POST":
         partner.name = request.form.get("name", partner.name).strip()
         partner.partner_type = request.form.get("partner_type", partner.partner_type)
+        partner.support_type = request.form.get("support_type", "") or None
         partner.status = request.form.get("status", partner.status)
         partner.engagement_level = request.form.get("engagement_level", "")
         partner.contact_person = request.form.get("contact_person", "")
@@ -69,7 +81,7 @@ def edit_partner(partner_id):
         flash("Partner updated successfully.", "success")
         return redirect(url_for("partners.view_partner", partner_id=partner.id))
 
-    return render_template("partners/form.html", partner=partner, PARTNER_TYPES=PARTNER_TYPES)
+    return render_template("partners/form.html", partner=partner, PARTNER_TYPES=PARTNER_TYPES, SUPPORT_TYPES=SUPPORT_TYPES)
 
 
 @partners_bp.route("/partners/<int:partner_id>/delete", methods=["POST"])

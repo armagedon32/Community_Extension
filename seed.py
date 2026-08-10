@@ -39,11 +39,11 @@ USERS = [
 ]
 
 PARTNERS = [
-    ("Municipality of Subic", "LGU", "Active"),
-    ("Barangay Wawandue Council", "LGU", "Active"),
-    ("Simbahang Sambayanihan", "Church-Based", "Active"),
-    ("DepEd Subic Division", "Government Agency", "Active"),
-    ("Rotary Club of Subic", "NGO", "Active"),
+    ("Municipality of Subic", "LGU", "Active", "Financial Support"),
+    ("Barangay Wawandue Council", "LGU", "Active", "Manpower Support"),
+    ("Simbahang Sambayanihan", "Church-Based", "Active", "Both"),
+    ("DepEd Subic Division", "Government Agency", "Active", "Manpower Support"),
+    ("Rotary Club of Subic", "NGO", "Active", "Financial Support"),
 ]
 
 PROJECTS = [
@@ -140,10 +140,11 @@ def run_seed(reset=True, app=None):
         db.session.commit()
     
         partners = []
-        for pname, ptype, st in PARTNERS:
+        for pname, ptype, st, support in PARTNERS:
             p = Partner(
                 name=pname,
                 partner_type=ptype,
+                support_type=support,
                 status=st,
                 engagement_level=random.choice(["Low", "Medium", "High"]),
                 contact_person=f"{pname} Contact",

@@ -20,14 +20,23 @@
                     </select>
                 </div>
                 <div class="col-md-6 mb-3">
+                    <label class="form-label">Support Type</label>
+                    <select name="support_type" class="form-select">
+                        <option value="">— Select —</option>
+                        {% for s in SUPPORT_TYPES %}
+                        <option value="{{ s }}" {% if partner and partner.support_type == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
                     <label class="form-label">Status</label>
                     <select name="status" class="form-select">
                         <option value="Active" {% if partner and partner.status == 'Active' %}selected{% endif %}>Active</option>
                         <option value="Inactive" {% if partner and partner.status == 'Inactive' %}selected{% endif %}>Inactive</option>
                     </select>
                 </div>
-            </div>
-            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Engagement Level</label>
                     <select name="engagement_level" class="form-select">
@@ -37,6 +46,8 @@
                         {% endfor %}
                     </select>
                 </div>
+            </div>
+            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Address</label>
                     <input type="text" name="address" class="form-control" value="{{ partner.address if partner else '' }}">

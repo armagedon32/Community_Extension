@@ -19,6 +19,8 @@ PROJECT_CATEGORIES = ["Community Outreach", "Livelihood", "Health", "Education",
 
 PARTNER_TYPES = ["LGU", "NGO", "Academic Institution", "Government Agency", "Private Sector", "Community Organization", "Church-Based", "Other"]
 
+SUPPORT_TYPES = ["Financial Support", "Manpower Support", "Both"]
+
 BENEFICIARY_SEGMENTS = ["Youth", "Senior Citizens", "Farmers", "Women-led Households", "Indigenous Peoples", "PWD", "General Community", "Students"]
 
 ACTIVITY_STATUSES = ["Scheduled", "Ongoing", "Completed", "Cancelled"]
@@ -151,6 +153,7 @@ class Partner(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255), nullable=False)
     partner_type = db.Column(db.String(50), nullable=False, default="LGU")
+    support_type = db.Column(db.String(30), nullable=True)
     status = db.Column(db.String(20), nullable=False, default="Active")
     engagement_level = db.Column(db.String(20), nullable=True)
     contact_person = db.Column(db.String(150), nullable=True)

@@ -116,6 +116,10 @@ CATEGORY_KEYWORDS = {
         "watershed", "river", "creek", "lake", "ocean",
         "marine", "coastal", "mangrove", "coral reef",
         "flood control", "drainage", "irrigation",
+        "waste management", "sewage", "sewage treatment",
+        "hazardous materials", " toxic", "contamination",
+        "environmental impact", "eco-system", "green belt",
+        "park", "nature preserve", "wildlife sanctuary",
     ],
     "Governance": [
         "municipal", "government", "council", "provincial", "governance",

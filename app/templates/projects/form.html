@@ -10,10 +10,20 @@
                 <label class="form-label">Project Title *</label>
                 <input type="text" name="title" class="form-control" required value="{{ project.title if project else '' }}">
             </div>
+
+            <div class="mb-3">
+                <label class="form-label">Upload Document to Auto-Fill Category</label>
+                <div class="input-group">
+                    <input type="file" name="document" id="docUpload" class="form-control" accept=".docx">
+                    <button type="button" id="predictBtn" class="btn btn-outline-primary" disabled>Detect Category</button>
+                </div>
+                <div id="predictStatus" class="form-text text-muted mt-1"></div>
+            </div>
+
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Category</label>
-                    <select name="category" class="form-select">
+                    <select name="category" id="categorySelect" class="form-select">
                         {% for c in PROJECT_CATEGORIES %}
                         <option value="{{ c }}" {% if project and project.category == c %}selected{% endif %}>{{ c }}</option>
                         {% endfor %}
@@ -81,5 +91,48 @@
     const range = document.getElementById('progressRange');
     const label = document.getElementById('progressLabel');
     range.addEventListener('input', () => label.textContent = range.value);
+
+    const docUpload = document.getElementById('docUpload');
+    const predictBtn = document.getElementById('predictBtn');
+    const predictStatus = document.getElementById('predictStatus');
+    const categorySelect = document.getElementById('categorySelect');
+
+    docUpload.addEventListener('change', () => {
+        predictBtn.disabled = !docUpload.files.length;
+    });
+
+    predictBtn.addEventListener('click', async () => {
+        const file = docUpload.files[0];
+        if (!file) return;
+
+        predictBtn.disabled = true;
+        predictStatus.textContent = 'Analyzing document...';
+        predictStatus.className = 'form-text text-muted mt-1';
+
+        const formData = new FormData();
+        formData.append('document', file);
+
+        try {
+            const resp = await fetch("{{ url_for('projects.predict_category') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                predictStatus.textContent = data.error;
+                predictStatus.className = 'form-text text-danger mt-1';
+            } else {
+                categorySelect.value = data.category;
+                predictStatus.textContent = 'Detected category: ' + data.category;
+                predictStatus.className = 'form-text text-success mt-1';
+            }
+        } catch (err) {
+            predictStatus.textContent = 'Error connecting to server.';
+            predictStatus.className = 'form-text text-danger mt-1';
+        } finally {
+            predictBtn.disabled = false;
+        }
+    });
 </script>
 {% endblock %}

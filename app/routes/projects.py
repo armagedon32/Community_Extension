@@ -1,9 +1,12 @@
 from datetime import datetime
+import io
 
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from docx import Document as DocxDocument
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app import db
+from app.ml.engine import classify_domain
 from app.models import (
     AccomplishmentReport,
     Beneficiary,
@@ -16,11 +19,50 @@ from app.models import (
 
 projects_bp = Blueprint("projects", __name__)
 
+CATEGORY_FALLBACK = "Community Outreach"
+
+
+def _extract_text_from_docx(file_storage):
+    """Extract text from an uploaded .docx file."""
+    file_bytes = file_storage.read()
+    doc = DocxDocument(io.BytesIO(file_bytes))
+    paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
+    return "\n".join(paragraphs)
+
+
+def _predict_category(text):
+    """Predict project category from text using the domain ML model."""
+    predicted, scores = classify_domain(text)
+    if predicted and predicted in PROJECT_CATEGORIES:
+        return predicted, scores
+    if predicted and predicted not in PROJECT_CATEGORIES:
+        return CATEGORY_FALLBACK, scores
+    return CATEGORY_FALLBACK, {}
+
 
 def _parse_date(value):
     if not value:
         return None
     return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+@projects_bp.route("/projects/predict-category", methods=["POST"])
+@login_required
+def predict_category():
+    file = request.files.get("document")
+    if not file:
+        return jsonify({"error": "No file uploaded."}), 400
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".docx"):
+        return jsonify({"error": "Only .docx files are supported."}), 400
+    try:
+        text = _extract_text_from_docx(file)
+        if not text.strip():
+            return jsonify({"error": "Document is empty or unreadable."}), 400
+        category, scores = _predict_category(text)
+        return jsonify({"category": category, "scores": scores})
+    except Exception as e:
+        return jsonify({"error": f"Failed to process document: {str(e)}"}), 500
 
 
 @projects_bp.route("/projects")

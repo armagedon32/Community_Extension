@@ -56,7 +56,15 @@
                             <a class="text-decoration-none fw-semibold text-primary" href="{{ url_for('projects.view_project', project_id=p.id) }}">{{ p.title }}</a>
                             <div class="small text-muted">{{ p.location or '—' }}</div>
                         </td>
-                        <td><span class="badge text-bg-light border">{{ p.category }}</span></td>
+                        <td>
+                            {% if p.category == 'Health' %}<span class="badge text-bg-danger">{{ p.category }}</span>
+                            {% elif p.category == 'Education' %}<span class="badge text-bg-primary">{{ p.category }}</span>
+                            {% elif p.category == 'Livelihood' %}<span class="badge text-bg-success">{{ p.category }}</span>
+                            {% elif p.category == 'Environment' %}<span class="badge text-bg-info">{{ p.category }}</span>
+                            {% elif p.category == 'Governance' %}<span class="badge text-bg-warning text-dark">{{ p.category }}</span>
+                            {% elif p.category == 'Technology' %}<span class="badge text-bg-secondary">{{ p.category }}</span>
+                            {% else %}<span class="badge text-bg-light border">{{ p.category }}</span>{% endif %}
+                        </td>
                         <td>{{ p.leader.full_name if p.leader else '—' }}</td>
                         <td>
                             {% if p.status == 'Ongoing' %}<span class="badge text-bg-warning">Ongoing</span>

@@ -209,26 +209,75 @@ def _extract_project_title(text):
 
 
 def _predict_category(text):
-    """Predict project category using ML model with keyword fallback."""
+    """Predict project category using hybrid: title suggestion + body analysis + ML model."""
     lines = text.split("\n")
     header = "\n".join(lines[:5]).lower() if lines else ""
+    t = text.lower()
 
-    project_title = _extract_project_title(text)
-    search_text = (project_title + " " + header).lower() if project_title else header
+    # Step 1: Extract project title if present
+    project_title = ""
+    import re
+    for pattern in [
+        r"(?:project\s*title|title\s*of\s*project)[:\s]+(.+)",
+        r"(?:project\s*name)[:\s]+(.+)",
+    ]:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            project_title = match.group(1).strip()
+            break
 
-    for cat in CATEGORY_KEYWORDS:
-        if cat.lower() in search_text:
-            return cat
+    # Step 2: Get category suggestions from title/header (but don't override yet)
+    title_suggestion = None
+    search_area = project_title if project_title else header
+    if search_area:
+        for cat in CATEGORY_KEYWORDS:
+            if cat.lower() in search_area.lower():
+                title_suggestion = cat
+                break
 
+    # Step 3: Full-document keyword scoring across entire content
+    body_scores = {}
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        count = sum(1 for kw in keywords if kw.lower() in t)
+        if count > 0:
+            body_scores[category] = count
+
+    # Step 4: ML model prediction
     predicted, scores = classify_domain(text)
-
+    ml_cat = None
+    ml_confidence = 0
     if predicted and predicted in PROJECT_CATEGORIES:
-        confidence = scores.get(predicted, 0)
-        if confidence >= 30:
-            return predicted
+        ml_confidence = scores.get(predicted, 0)
 
-    keyword_result = _keyword_predict(text)
-    return keyword_result
+    # Step 5: Smart category selection with proper priority
+    # Priority: ML model > body keyword strength > title suggestion
+    final_cat = CATEGORY_FALLBACK
+    final_weight = -1
+
+    # 1) Try ML model first (if confidence is reasonable)
+    if ml_confidence >= 20:
+        final_cat = predicted
+        final_weight = ml_confidence
+
+    # 2) Try body keyword analysis (if it has more matches than ML threshold)
+    if body_scores:
+        body_best = max(body_scores, key=body_scores.get)
+        body_count = body_scores[body_best]
+        # If body has significantly more keyword matches than ML confidence, use body
+        if body_count > ml_confidence and body_count > 1:
+            final_cat = body_best
+            final_weight = body_count
+        # If ML and body are close, prefer ML but note body
+        elif body_count > 0 and ml_confidence > 0 and abs(body_count - ml_confidence) <= 2:
+            # Tie: prefer ML but keep body as secondary
+            pass
+
+    # 3) If nothing strong, use title suggestion as fallback
+    if final_weight < 1 and title_suggestion:
+        final_cat = title_suggestion
+        final_weight = 1
+
+    return final_cat
 
 
 def _parse_date(value):

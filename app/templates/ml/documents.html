@@ -96,6 +96,7 @@
                             {% else %}—{% endif %}
                         </td>
                         <td class="text-end">
+                            <a href="{{ url_for('ml.print_document', doc_id=d.id) }}" target="_blank" class="btn btn-sm btn-outline-primary" title="Print details"><i class="bi bi-printer"></i></a>
                             <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#del{{ d.id }}"><i class="bi bi-trash"></i></button>
                         </td>
                     </tr>

@@ -314,6 +314,19 @@ def classify_document(doc_id):
     return redirect(url_for("ml.list_documents"))
 
 
+@ml_bp.route("/ml/documents/<int:doc_id>/print")
+@login_required
+def print_document(doc_id):
+    from datetime import datetime
+
+    doc = db.get_or_404(Document, doc_id)
+    return render_template(
+        "ml/document_print.html",
+        doc=doc,
+        generated_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
+    )
+
+
 def _ensure_models():
     """Train any missing classifier on-demand so classification always works.
 

@@ -1,0 +1,51 @@
+{% extends 'reports/print_base.html' %}
+{% block report_title %}Document Details - CELMIS{% endblock %}
+{% block header_title %}Training Document Details{% endblock %}
+
+{% block report_content %}
+<table class="table table-bordered">
+    <tbody>
+        <tr>
+            <th style="width: 30%; background: #f4f7fb;">Document Title</th>
+            <td>{{ doc.title }}</td>
+        </tr>
+        <tr>
+            <th style="background: #f4f7fb;">Type Label</th>
+            <td>{{ doc.category or 'Unlabeled' }}</td>
+        </tr>
+        <tr>
+            <th style="background: #f4f7fb;">Project Category (Domain)</th>
+            <td>{{ doc.domain or '—' }}</td>
+        </tr>
+        <tr>
+            <th style="background: #f4f7fb;">Predicted Type</th>
+            <td>{{ doc.predicted_category or '—' }}</td>
+        </tr>
+        <tr>
+            <th style="background: #f4f7fb;">Predicted Project Category</th>
+            <td>{{ doc.predicted_domain or '—' }}</td>
+        </tr>
+        <tr>
+            <th style="background: #f4f7fb;">Training Document</th>
+            <td>{{ 'Yes' if doc.is_training else 'No' }}</td>
+        </tr>
+        <tr>
+            <th style="background: #f4f7fb;">Source File</th>
+            <td>{{ doc.filename or '—' }}</td>
+        </tr>
+        {% if doc.uploader %}
+        <tr>
+            <th style="background: #f4f7fb;">Uploaded By</th>
+            <td>{{ doc.uploader.full_name }}</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <th style="background: #f4f7fb;">Date Added</th>
+            <td>{{ doc.created_at.strftime('%B %d, %Y %I:%M %p') if doc.created_at else '—' }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<h5 class="mt-4 mb-2" style="color:#1a4d8f;">Document Content</h5>
+<div style="border: 1px solid #dee2e6; border-radius: 6px; padding: 1rem; white-space: pre-wrap; font-size: .9rem; max-height: none;">{{ doc.content or '—' }}</div>
+{% endblock %}

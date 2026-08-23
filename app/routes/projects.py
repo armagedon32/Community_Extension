@@ -2,7 +2,7 @@ from datetime import datetime
 import io
 
 from docx import Document as DocxDocument
-from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app import db
@@ -25,6 +25,7 @@ CATEGORY_FALLBACK = "Community Outreach"
 def _extract_text_from_docx(file_storage):
     """Extract text from an uploaded .docx file."""
     file_bytes = file_storage.read()
+    file_storage.seek(0)
     doc = DocxDocument(io.BytesIO(file_bytes))
     paragraphs = [p.text for p in doc.paragraphs if p.text.strip()]
     return "\n".join(paragraphs)
@@ -35,8 +36,6 @@ def _predict_category(text):
     predicted, scores = classify_domain(text)
     if predicted and predicted in PROJECT_CATEGORIES:
         return predicted, scores
-    if predicted and predicted not in PROJECT_CATEGORIES:
-        return CATEGORY_FALLBACK, scores
     return CATEGORY_FALLBACK, {}
 
 
@@ -44,25 +43,6 @@ def _parse_date(value):
     if not value:
         return None
     return datetime.strptime(value, "%Y-%m-%d").date()
-
-
-@projects_bp.route("/projects/predict-category", methods=["POST"])
-@login_required
-def predict_category():
-    file = request.files.get("document")
-    if not file:
-        return jsonify({"error": "No file uploaded."}), 400
-    filename = (file.filename or "").lower()
-    if not filename.endswith(".docx"):
-        return jsonify({"error": "Only .docx files are supported."}), 400
-    try:
-        text = _extract_text_from_docx(file)
-        if not text.strip():
-            return jsonify({"error": "Document is empty or unreadable."}), 400
-        category, scores = _predict_category(text)
-        return jsonify({"category": category, "scores": scores})
-    except Exception as e:
-        return jsonify({"error": f"Failed to process document: {str(e)}"}), 500
 
 
 @projects_bp.route("/projects")
@@ -99,9 +79,22 @@ def create_project():
             return render_template("projects/form.html", project=None, leaders=leaders,
                                    PROJECT_CATEGORIES=PROJECT_CATEGORIES,
                                    PROJECT_STATUSES=PROJECT_STATUSES, is_edit=False)
+
+        category = request.form.get("category", "Community Outreach")
+
+        file = request.files.get("document")
+        if file and (file.filename or "").lower().endswith(".docx"):
+            try:
+                text = _extract_text_from_docx(file)
+                if text.strip():
+                    predicted, _scores = _predict_category(text)
+                    category = predicted
+            except Exception:
+                pass
+
         project = Project(
             title=title,
-            category=request.form.get("category", "Community Outreach"),
+            category=category,
             description=request.form.get("description", ""),
             status=request.form.get("status", "Proposed"),
             leader_id=request.form.get("leader_id") or None,

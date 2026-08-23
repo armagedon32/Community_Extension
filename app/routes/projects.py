@@ -21,6 +21,54 @@ projects_bp = Blueprint("projects", __name__)
 
 CATEGORY_FALLBACK = "Community Outreach"
 
+CATEGORY_KEYWORDS = {
+    "Health": [
+        "health", "medical", "clinic", "nutrition", "doctor", "nurse",
+        "immunization", "screening", "hygiene", "diabetes", "feeding",
+        "hospital", "patient", "wellness", "disease", "vaccine",
+        "check-up", "check up", "dental", "maternal", "childbirth",
+        "pregnancy", "mental health", "sanitation", "first aid",
+        "blood pressure", "BMI", "treatment", "medicine", "therapy",
+        "health program", "health outreach", "health mission",
+    ],
+    "Livelihood": [
+        "livelihood", "income", "business", "skills training",
+        "entrepreneurship", "starter kit", "market", "micro",
+        "employment", "training", "cooperative", "selling",
+        "profit", "revenue", "financial", "savings", "loan",
+        "products", "handicraft", "soap", "food processing",
+        "veggie", "farming", "agriculture", "harvest",
+    ],
+    "Education": [
+        "literacy", "reading", "teacher", "teaching", "learning",
+        "tuition", "scholarship", "school", "learner", "tutorial",
+        "education", "student", "classroom", "deped", "academic",
+        "tutorial", "seminar", "workshop", "lecture", "course",
+        "enrollment", "graduation", "diploma", "training program",
+    ],
+    "Environment": [
+        "coastal", "cleanup", "tree", "planting", "riverbank", "bamboo",
+        "environment", "seedling", "forest", "water access", "garden",
+        "recycling", "waste", "ecology", "conservation", "organic",
+        "composting", "clean and green", "eco", "sustainability",
+        "climate", "renewable", "solar", "water purification",
+    ],
+    "Governance": [
+        "municipal", "government", "council", "provincial", "governance",
+        "local government", "barangay council", "policy", "legislation",
+        "public administration", "transparency", "accountability",
+        "ordinance", "resolution", "official", "public service",
+        "citizen", "community participation", "stakeholder engagement",
+    ],
+    "Technology": [
+        "computer", "digital", "technology", "internet", "software",
+        "tesda", "technical", "coding", "programming", "system",
+        "ICT", "information technology", "web", "mobile app",
+        "data", "online", "e-learning", "LMS", "robotics",
+        "STEM", "innovation", "automation",
+    ],
+}
+
 
 def _extract_text_from_docx(file_storage):
     """Extract text from an uploaded .docx file."""
@@ -31,12 +79,30 @@ def _extract_text_from_docx(file_storage):
     return "\n".join(paragraphs)
 
 
-def _predict_category(text):
-    """Predict project category from text using ML domain model."""
-    predicted, scores = classify_domain(text)
-    if predicted and predicted in PROJECT_CATEGORIES:
-        return predicted
+def _keyword_predict(text):
+    """Fallback keyword-based category prediction."""
+    t = text.lower()
+    scores = {}
+    for category, keywords in CATEGORY_KEYWORDS.items():
+        count = sum(1 for kw in keywords if kw.lower() in t)
+        if count > 0:
+            scores[category] = count
+    if scores:
+        return max(scores, key=scores.get)
     return CATEGORY_FALLBACK
+
+
+def _predict_category(text):
+    """Predict project category using ML model with keyword fallback."""
+    predicted, scores = classify_domain(text)
+
+    if predicted and predicted in PROJECT_CATEGORIES:
+        confidence = scores.get(predicted, 0)
+        if confidence >= 30:
+            return predicted
+
+    keyword_result = _keyword_predict(text)
+    return keyword_result
 
 
 def _parse_date(value):

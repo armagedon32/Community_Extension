@@ -6,6 +6,7 @@ from flask import Blueprint, flash, jsonify, redirect, render_template, request,
 from flask_login import current_user, login_required
 
 from app import db
+from app.ml.engine import classify_domain
 from app.models import (
     AccomplishmentReport,
     Beneficiary,
@@ -20,26 +21,6 @@ projects_bp = Blueprint("projects", __name__)
 
 CATEGORY_FALLBACK = "Community Outreach"
 
-CATEGORY_KEYWORDS = {
-    "Health": ["health", "medical", "clinic", "nutrition", "doctor", "nurse",
-               "immunization", "screening", "hygiene", "diabetes", "feeding",
-               "hospital", "patient", "wellness", "disease", "vaccine"],
-    "Livelihood": ["livelihood", "income", "soap", "business", "skills training",
-                   "entrepreneurship", "starter kit", "market", "micro", "jobs",
-                   "employment", "training", "skills", "cooperative"],
-    "Education": ["literacy", "reading", "teacher", "teaching", "learning", "tuition",
-                  "scholarship", "school", "learner", "tutorial", "education",
-                  "student", "classroom", "deped", "academic"],
-    "Environment": ["coastal", "cleanup", "tree", "plant", "riverbank", "bamboo",
-                    "environment", "seedling", "forest", "water access", "garden",
-                    "recycling", "waste", "ecology", "conservation"],
-    "Governance": ["municipal", "government", "council", "provincial", "governance",
-                   "local government", "barangay council", "policy", "legislation",
-                   "public administration", "transparency"],
-    "Technology": ["computer", "digital", "technology", "internet", "software",
-                   "tesda", "technical", "coding", "programming", "IT", "system"],
-}
-
 
 def _extract_text_from_docx(file_storage):
     """Extract text from an uploaded .docx file."""
@@ -51,17 +32,10 @@ def _extract_text_from_docx(file_storage):
 
 
 def _predict_category(text):
-    """Predict project category from text using keyword matching."""
-    t = text.lower()
-    scores = {}
-    for category, keywords in CATEGORY_KEYWORDS.items():
-        count = sum(1 for kw in keywords if kw.lower() in t)
-        if count > 0:
-            scores[category] = count
-
-    if scores:
-        best = max(scores, key=scores.get)
-        return best
+    """Predict project category from text using ML domain model."""
+    predicted, scores = classify_domain(text)
+    if predicted and predicted in PROJECT_CATEGORIES:
+        return predicted
     return CATEGORY_FALLBACK
 
 

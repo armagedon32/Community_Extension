@@ -13,8 +13,8 @@
 
             <div class="mb-3">
                 <label class="form-label">Upload Document (optional - auto-detects category)</label>
-                <input type="file" name="document" class="form-control" accept=".docx">
-                <div class="form-text text-muted">Upload a .docx file and the system will auto-detect the project category.</div>
+                <input type="file" id="docUpload" name="document" class="form-control" accept=".docx">
+                <div id="detectStatus" class="form-text text-muted mt-1"></div>
             </div>
 
             <div class="row">
@@ -85,5 +85,41 @@
     const range = document.getElementById('progressRange');
     const label = document.getElementById('progressLabel');
     range.addEventListener('input', () => label.textContent = range.value);
+
+    const docUpload = document.getElementById('docUpload');
+    const categoryInput = document.getElementById('categoryInput');
+    const detectStatus = document.getElementById('detectStatus');
+
+    docUpload.addEventListener('change', async () => {
+        const file = docUpload.files[0];
+        if (!file) return;
+
+        detectStatus.textContent = 'Analyzing document...';
+        detectStatus.className = 'form-text text-muted mt-1';
+        categoryInput.value = '';
+
+        const formData = new FormData();
+        formData.append('document', file);
+
+        try {
+            const resp = await fetch("{{ url_for('projects.predict_category') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await resp.json();
+
+            if (data.error) {
+                detectStatus.textContent = data.error;
+                detectStatus.className = 'form-text text-danger mt-1';
+            } else {
+                categoryInput.value = data.category;
+                detectStatus.textContent = 'Category detected: ' + data.category;
+                detectStatus.className = 'form-text text-success mt-1';
+            }
+        } catch (err) {
+            detectStatus.textContent = 'Error connecting to server.';
+            detectStatus.className = 'form-text text-danger mt-1';
+        }
+    });
 </script>
 {% endblock %}

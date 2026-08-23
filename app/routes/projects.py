@@ -2,7 +2,7 @@ from datetime import datetime
 import io
 
 from docx import Document as DocxDocument
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 
 from app import db
@@ -69,6 +69,25 @@ def _parse_date(value):
     if not value:
         return None
     return datetime.strptime(value, "%Y-%m-%d").date()
+
+
+@projects_bp.route("/projects/predict-category", methods=["POST"])
+@login_required
+def predict_category():
+    file = request.files.get("document")
+    if not file:
+        return jsonify({"error": "No file uploaded."}), 400
+    filename = (file.filename or "").lower()
+    if not filename.endswith(".docx"):
+        return jsonify({"error": "Only .docx files are supported."}), 400
+    try:
+        text = _extract_text_from_docx(file)
+        if not text.strip():
+            return jsonify({"error": "Document is empty or unreadable."}), 400
+        category = _predict_category(text)
+        return jsonify({"category": category})
+    except Exception as e:
+        return jsonify({"error": f"Failed to process document: {str(e)}"}), 500
 
 
 @projects_bp.route("/projects")

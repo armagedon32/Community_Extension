@@ -22,6 +22,14 @@ projects_bp = Blueprint("projects", __name__)
 CATEGORY_FALLBACK = "Community Outreach"
 
 CATEGORY_KEYWORDS = {
+    "Community Outreach": [
+        "community outreach", "community needs", "outreach program",
+        "community extension", "community service", "community development",
+        "community engagement", "community project", "barangay outreach",
+        "needs assessment", "community assessment", "community consultation",
+        "extension program", "extension project", "extension services",
+        "community support", "community aid", "community relief",
+    ],
     "Health": [
         "health", "medical", "clinic", "nutrition", "doctor", "nurse",
         "immunization", "screening", "hygiene", "diabetes", "feeding",
@@ -43,7 +51,7 @@ CATEGORY_KEYWORDS = {
         "literacy", "reading", "teacher", "teaching", "learning",
         "tuition", "scholarship", "school", "learner", "tutorial",
         "education", "student", "classroom", "deped", "academic",
-        "tutorial", "seminar", "workshop", "lecture", "course",
+        "seminar", "workshop", "lecture", "course",
         "enrollment", "graduation", "diploma", "training program",
     ],
     "Environment": [
@@ -102,13 +110,30 @@ def _keyword_predict(text):
     return CATEGORY_FALLBACK
 
 
+def _extract_project_title(text):
+    """Extract project title from document if explicitly labeled."""
+    import re
+    patterns = [
+        r"(?:project\s*title|title\s*of\s*project)[:\s]+(.+)",
+        r"(?:project\s*name)[:\s]+(.+)",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
 def _predict_category(text):
     """Predict project category using ML model with keyword fallback."""
     lines = text.split("\n")
     header = "\n".join(lines[:5]).lower() if lines else ""
 
+    project_title = _extract_project_title(text)
+    search_text = (project_title + " " + header).lower() if project_title else header
+
     for cat in CATEGORY_KEYWORDS:
-        if cat.lower() in header:
+        if cat.lower() in search_text:
             return cat
 
     predicted, scores = classify_domain(text)

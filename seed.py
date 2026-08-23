@@ -85,7 +85,7 @@ def infer_domain(content):
                             "tesda", "technical")):
         return "Technology"
     if any(k in t for k in ("research", "study", "baseline", "impact evalua")):
-        return "Research"
+        return "Community Outreach"
     return "Community Outreach"
 
 

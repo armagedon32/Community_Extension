@@ -15,7 +15,7 @@ ROLES = [
 ]
 
 PROJECT_STATUSES = ["Proposed", "Ongoing", "Completed"]
-PROJECT_CATEGORIES = ["Community Outreach", "Livelihood", "Health", "Education", "Environment", "Governance", "Technology", "Research", "Other"]
+PROJECT_CATEGORIES = ["Community Outreach", "Livelihood", "Health", "Education", "Environment", "Governance", "Technology"]
 
 PARTNER_TYPES = ["LGU", "NGO", "Academic Institution", "Government Agency", "Private Sector", "Community Organization", "Church-Based", "Other"]
 

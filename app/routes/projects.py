@@ -80,13 +80,24 @@ def _extract_text_from_docx(file_storage):
 
 
 def _keyword_predict(text):
-    """Fallback keyword-based category prediction."""
+    """Fallback keyword-based category prediction with title weighting."""
+    lines = text.split("\n")
+    title = lines[0] if lines else ""
     t = text.lower()
+    title_lower = title.lower()
+
     scores = {}
     for category, keywords in CATEGORY_KEYWORDS.items():
-        count = sum(1 for kw in keywords if kw.lower() in t)
+        count = 0
+        for kw in keywords:
+            kw_lower = kw.lower()
+            if kw_lower in t:
+                count += 1
+            if kw_lower in title_lower:
+                count += 3
         if count > 0:
             scores[category] = count
+
     if scores:
         return max(scores, key=scores.get)
     return CATEGORY_FALLBACK
@@ -94,6 +105,13 @@ def _keyword_predict(text):
 
 def _predict_category(text):
     """Predict project category using ML model with keyword fallback."""
+    lines = text.split("\n")
+    title = lines[0] if lines else ""
+
+    for cat in CATEGORY_KEYWORDS:
+        if cat.lower() in title.lower():
+            return cat
+
     predicted, scores = classify_domain(text)
 
     if predicted and predicted in PROJECT_CATEGORIES:

@@ -20,11 +20,8 @@
             <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Category</label>
-                    <select name="category" id="categorySelect" class="form-select">
-                        {% for c in PROJECT_CATEGORIES %}
-                        <option value="{{ c }}" {% if project and project.category == c %}selected{% endif %}>{{ c }}</option>
-                        {% endfor %}
-                    </select>
+                    <input type="text" id="categoryInput" name="category" class="form-control" readonly
+                           value="{{ project.category if project else '' }}" placeholder="Upload document to auto-detect">
                 </div>
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Status</label>

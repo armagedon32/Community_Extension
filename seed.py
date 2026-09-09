@@ -14,6 +14,7 @@ from app.models import (
     Donation,
     FinancialTransaction,
     MOA,
+    MOU,
     Partner,
     Project,
     SurveyQuestion,
@@ -220,6 +221,20 @@ def run_seed(reset=True, app=None):
             )
             db.session.add(m)
         db.session.commit()
+
+        for ui, part in enumerate(partners[3:]):
+            mu = MOU(
+                partner_id=part.id,
+                project_id=projects[(ui + 1) % len(projects)].id,
+                title=f"MOU on collaboration with {part.name}",
+                description="Memorandum of Understanding outlining intent for joint extension engagement",
+                status=["Active", "Pending", "Expired"][ui % 3],
+                start_date=datetime.date.today() - datetime.timedelta(days=30),
+                end_date=datetime.date.today() + datetime.timedelta(days=200),
+                notes="Follow-up to be converted into a full MOA",
+            )
+            db.session.add(mu)
+        db.session.commit()
     
         for ri, proj in enumerate(projects[:5]):
             rep = AccomplishmentReport(
@@ -398,6 +413,11 @@ def run_seed(reset=True, app=None):
                 project_id=projects[idx % len(projects)].id,
                 transaction_date=datetime.date.today() - datetime.timedelta(days=idx * 15),
                 recorded_by=users[0].id,
+                status="Approved",
+                verifier_id=users[0].id,
+                verified_at=datetime.datetime.utcnow() - datetime.timedelta(days=idx * 15),
+                approver_id=users[0].id,
+                approved_at=datetime.datetime.utcnow() - datetime.timedelta(days=idx * 15),
             ))
         db.session.add(FinancialTransaction(
             description="Outreach supplies for Community Health Caravan",
@@ -406,6 +426,11 @@ def run_seed(reset=True, app=None):
             project_id=projects[1].id,
             transaction_date=datetime.date.today() - datetime.timedelta(days=10),
             recorded_by=users[0].id,
+            status="Approved",
+            verifier_id=users[0].id,
+            verified_at=datetime.datetime.utcnow() - datetime.timedelta(days=10),
+            approver_id=users[0].id,
+            approved_at=datetime.datetime.utcnow() - datetime.timedelta(days=10),
         ))
         db.session.add(FinancialTransaction(
             description="Fund allocation for Literacy Program",
@@ -414,6 +439,11 @@ def run_seed(reset=True, app=None):
             project_id=projects[0].id,
             transaction_date=datetime.date.today() - datetime.timedelta(days=20),
             recorded_by=users[0].id,
+            status="Approved",
+            verifier_id=users[0].id,
+            verified_at=datetime.datetime.utcnow() - datetime.timedelta(days=20),
+            approver_id=users[0].id,
+            approved_at=datetime.datetime.utcnow() - datetime.timedelta(days=20),
         ))
         db.session.commit()
     

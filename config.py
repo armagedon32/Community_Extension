@@ -10,3 +10,6 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     UPLOAD_FOLDER = os.path.join(BASE_DIR, "app", "static", "uploads")
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024
+    # Maximum allowable amount for a single financial transaction (PHP).
+    # Configured via environment variable so it can be tuned per deployment.
+    MAX_TRANSACTION_AMOUNT = float(os.environ.get("MAX_TRANSACTION_AMOUNT", 500000))

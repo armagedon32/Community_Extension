@@ -20,9 +20,9 @@
     </p>
     <ul class="small text-muted mb-0 ps-3">
         {% if contributions == 0 %}
-        <li>No contributions recorded yet. Income must be logged before fund utilization can be meaningfully assessed.</li>
+        <li>No approved contributions recorded yet. Income must be logged and approved before fund utilization can be meaningfully assessed.</li>
         {% else %}
-        <li class="mb-1">Of the <strong>&#8369; {{ "{:,.0f}".format(contributions) }}</strong> collected, <strong>{{ '{:,.0f}'.format(spent) }}</strong> (<strong>{{ '%.1f'|format(utilization) }}%</strong>) has been obligated to expenses and allocations, leaving <strong>&#8369; {{ "{:,.0f}".format(available) }}</strong> (<strong>{{ '%.1f'|format(avail_pct) }}%</strong>) available.</li>
+        <li class="mb-1">Of the <strong>&#8369; {{ "{:,.0f}".format(contributions) }}</strong> approved and collected, <strong>{{ '{:,.0f}'.format(spent) }}</strong> (<strong>{{ '%.1f'|format(utilization) }}%</strong>) has been obligated to expenses and allocations, leaving <strong>&#8369; {{ "{:,.0f}".format(available) }}</strong> (<strong>{{ '%.1f'|format(avail_pct) }}%</strong>) available.</li>
         <li class="mb-1">
             {% if avail_pct >= 50 %}A sizable share of funds (<strong>{{ '%.1f'|format(avail_pct) }}%</strong>) remains available, providing cushion — however, idle funds may indicate extension activities are not yet fully rolled out.
             {% elif avail_pct >= 20 %}The fund utilization rate reflects an active extension program; the remaining reserve is available to sustain ongoing and upcoming activities.
@@ -34,12 +34,12 @@
         <div class="col-md-4">
             <div class="border rounded p-2 small text-muted">
                 <strong class="text-primary">Budget execution:</strong>
-                Comparing contributions against expenses and allocations reveals whether resources are advancing institutional extension objectives or being under-utilized.
+                Comparing approved contributions against approved expenses and allocations reveals whether resources are advancing institutional extension objectives or being under-utilized.
             </div>
         </div>
         <div class="col-md-4">
             <div class="border rounded p-3 small text-muted">
-                <strong class="text-primary">Accountability &amp; audit-readiness:</strong> A transparent fund trail supports accurate institutional financial reporting and reinforces trust among stakeholder-partners.
+                <strong class="text-primary">Accountability &amp; audit-readiness:</strong> A transparent fund trail — every transaction verified and approved by authorized officers — supports accurate institutional financial reporting and reinforces trust.
             </div>
         </div>
         <div class="col-md-4">
@@ -53,7 +53,7 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Financial Dashboard</h4>
-        <span class="text-muted small">Contribution funds, expenses, and allocations</span>
+        <span class="text-muted small">Contribution funds, expenses, and allocations (approved transactions only)</span>
     </div>
     <div class="d-flex gap-2">
         <a href="{{ url_for('finance.stakeholders') }}" class="btn btn-outline-primary"><i class="bi bi-people"></i> Stakeholders</a>
@@ -65,7 +65,7 @@
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
         <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-             title="&lt;strong&gt;Total Cash Donations&lt;/strong&gt; —&lt;br&gt;Sum ng lahat ng donations mula sa stakeholders/partners.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; SUM(amount) kung saan transaction_type = 'Contribution'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
+             title="&lt;strong&gt;Total Cash Donations&lt;/strong&gt; —&lt;br&gt;Sum ng lahat ng APPROVED donations mula sa stakeholders/partners.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; SUM(amount) kung saan status='Approved' at transaction_type='Contribution'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-success">&#8369; {{ "{:,.0f}".format(contributions) }}</div>
@@ -77,7 +77,7 @@
     </div>
     <div class="col-6 col-lg-3">
         <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-             title="&lt;strong&gt;Total Expenses + Allocations&lt;/strong&gt; —&lt;br&gt;Kabuuang nagastos (Expense) + inilaan sa mga project (Allocation).&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; SUM(amount) ng 'Expense' + SUM(amount) ng 'Allocation'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
+             title="&lt;strong&gt;Total Expenses + Allocations&lt;/strong&gt; —&lt;br&gt;Kabuuang APPROVED na nagastos (Expense) + inilaan sa mga project (Allocation).&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; SUM(amount) ng 'Expense' + SUM(amount) ng 'Allocation' (status='Approved')&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-danger">&#8369; {{ "{:,.0f}".format(expenses + allocated) }}</div>
@@ -89,7 +89,7 @@
     </div>
     <div class="col-6 col-lg-3">
         <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-             title="&lt;strong&gt;Available Funds&lt;/strong&gt; —&lt;br&gt;Natitirang pondo pagkatapos ibawas ang gastos at allocation.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; Contributions − Expenses − Allocations&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; computed mula sa financial_transactions">
+             title="&lt;strong&gt;Available Funds&lt;/strong&gt; —&lt;br&gt;Natitirang APPROVED na pondo pagkatapos ibawas ang gastos at allocation.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; Contributions − Expenses − Allocations&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; computed mula sa financial_transactions">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
                     <div class="value text-primary">&#8369; {{ "{:,.0f}".format(available) }}</div>
@@ -101,19 +101,110 @@
     </div>
     <div class="col-6 col-lg-3">
         <div class="card stat-card p-3" data-bs-toggle="tooltip" data-bs-placement="top" data-bs-html="true"
-             title="&lt;strong&gt;Active Fund Records&lt;/strong&gt; —&lt;br&gt;Bilang ng aktibong financial transaction records (hindi ito halaga ng pera).&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; COUNT(*) kung saan status = 'Active'&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
+             title="&lt;strong&gt;Pending Approvals&lt;/strong&gt; —&lt;br&gt;Bilang ng financial transaction na nasa 'Pending' o 'Verified' at naghihintay ng verification/approval.&lt;br&gt;&lt;em&gt;Computation:&lt;/em&gt; COUNT(*) kung saan status IN ('Pending','Verified')&lt;br&gt;&lt;em&gt;Source:&lt;/em&gt; financial_transactions table">
             <div class="d-flex justify-content-between align-items-center">
                 <div>
-                    <div class="value text-info">{{ allocated_funds }}</div>
-                    <div class="label">Active Fund Records <i class="bi bi-question-circle text-muted small"></i></div>
+                    <div class="value text-warning">{{ pending_count }} <span class="fs-6 text-muted">Pending</span> / {{ verified_count }} <span class="fs-6 text-muted">Verified</span></div>
+                    <div class="label">Pending Approvals <i class="bi bi-question-circle text-muted small"></i></div>
                 </div>
-                <div class="icon bg-soft-info"><i class="bi bi-pie-chart"></i></div>
+                <div class="icon bg-soft-warning"><i class="bi bi-hourglass-split"></i></div>
             </div>
         </div>
     </div>
 </div>
 
 {{ finance_insights() }}
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-shield-check text-primary fs-5"></i>
+        <h6 class="fw-bold mb-0">Amount Validation &amp; Approval Workflow</h6>
+    </div>
+    <p class="small text-muted mb-3">
+        Financial requests are validated against the configured ceiling and follow a two-step
+        <strong>Verify &rarr; Approve</strong> chain. Authority is granted by role based on the
+        requested amount; only approved transactions affect fund totals.
+    </p>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Approval Tier</th>
+                    <th>Amount Range</th>
+                    <th>Authorized Verifier</th>
+                    <th>Authorized Approver</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in APPROVAL_TIERS %}
+                <tr>
+                    <td><span class="badge text-bg-light border">{{ t.tier }}</span> <span class="text-muted small">{{ t.label }}</span></td>
+                    <td class="small">&#8369; {{ "{:,.0f}".format(t.min) }} &ndash; &#8369; {{ "{:,.0f}".format(tier_max_amount(t, MAX_TRANSACTION_AMOUNT)) }}{{ ' (max)' if t.max is none else '' }}</td>
+                    <td class="small">{{ t.verifiers|join(', ') }}</td>
+                    <td class="small">{{ t.approvers|join(', ') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <p class="small text-muted mt-2 mb-0">
+        <i class="bi bi-exclamation-circle"></i> Maximum allowable amount per transaction:
+        <strong>&#8369; {{ "{:,.2f}".format(MAX_TRANSACTION_AMOUNT) }}</strong>. Negative, invalid, and
+        over-limit amounts are rejected by both the browser and the server.
+    </p>
+</div>
+
+{% if awaiting %}
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-hourglass-split text-warning fs-5"></i>
+            <h6 class="fw-bold mb-0">Awaiting Approval</h6>
+        </div>
+        <a href="{{ url_for('finance.transactions') }}" class="small">View all &rarr;</a>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Description</th>
+                    <th>Type</th>
+                    <th class="text-end">Amount</th>
+                    <th>Status</th>
+                    <th>Next Action By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for t in awaiting %}
+                {% set tier = tier_for_amount(t.amount) %}
+                <tr>
+                    <td class="small text-nowrap">{{ t.transaction_date.strftime('%b %d, %Y') }}</td>
+                    <td class="fw-semibold small">{{ t.description }}</td>
+                    <td>
+                        {% if t.transaction_type == 'Contribution' %}<span class="badge text-bg-success">Contribution</span>
+                        {% elif t.transaction_type == 'Expense' %}<span class="badge text-bg-danger">Expense</span>
+                        {% else %}<span class="badge text-bg-warning">Allocation</span>{% endif %}
+                    </td>
+                    <td class="text-end small fw-semibold text-nowrap">&#8369; {{ "{:,.2f}".format(t.amount) }}</td>
+                    <td>
+                        {% if t.status == 'Pending' %}<span class="badge text-bg-warning">Pending</span>
+                        {% else %}<span class="badge text-bg-info">Verified</span>{% endif %}
+                    </td>
+                    <td class="small">
+                        {% if t.status == 'Pending' %}
+                            Verify: <strong>{{ tier.verifiers|join(' / ') }}</strong>
+                        {% else %}
+                            Approve: <strong>{{ tier.approvers|join(' / ') }}</strong>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
 
 <div class="card p-4 mb-4">
     <div class="d-flex align-items-center gap-2 mb-2">
@@ -154,26 +245,32 @@
     </div>
     <div class="col-lg-6">
         <div class="card p-4 h-100">
-            <h6 class="fw-bold mb-3">Recent Transactions</h6>
+            <h6 class="fw-bold mb-3">Recent Approved Transactions</h6>
             <div class="table-responsive">
                 <table class="table table-sm table-hover align-middle">
                     <thead>
-                        <tr><th>Date</th><th>Description</th><th>Type</th><th class="text-end">Amount</th></tr>
+                        <tr><th>Date</th><th>Description</th><th>Type</th><th>Status</th><th class="text-end">Amount</th></tr>
                     </thead>
                     <tbody>
                         {% for t in recent %}
                         <tr>
-                            <td class="small">{{ t.transaction_date.strftime('%b %d, %Y') }}</td>
+                            <td class="small text-nowrap">{{ t.transaction_date.strftime('%b %d, %Y') }}</td>
                             <td class="small">{{ t.description }}</td>
                             <td>
                                 {% if t.transaction_type == 'Contribution' %}<span class="badge text-bg-success">Contribution</span>
                                 {% elif t.transaction_type == 'Expense' %}<span class="badge text-bg-danger">Expense</span>
                                 {% else %}<span class="badge text-bg-warning">Allocation</span>{% endif %}
                             </td>
-                            <td class="text-end small fw-semibold">&#8369; {{ "{:,.2f}".format(t.amount) }}</td>
+                            <td>
+                                {% if t.status == 'Approved' %}<span class="badge text-bg-success">Approved</span>
+                                {% elif t.status == 'Pending' %}<span class="badge text-bg-warning">Pending</span>
+                                {% elif t.status == 'Verified' %}<span class="badge text-bg-info">Verified</span>
+                                {% else %}<span class="badge text-bg-danger">Rejected</span>{% endif %}
+                            </td>
+                            <td class="text-end small fw-semibold text-nowrap">&#8369; {{ "{:,.2f}".format(t.amount) }}</td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="4" class="text-center text-muted">No transactions yet.</td></tr>
+                        <tr><td colspan="5" class="text-center text-muted">No transactions yet.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

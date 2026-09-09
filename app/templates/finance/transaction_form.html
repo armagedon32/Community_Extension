@@ -4,8 +4,13 @@
 {% block content %}
 <div class="card" style="max-width: 700px;">
     <div class="card-body p-4">
-        <h4 class="fw-bold mb-4">Record New Transaction</h4>
-        <form method="POST">
+        <h4 class="fw-bold mb-1">Record New Transaction</h4>
+        <p class="small text-muted mb-4">
+            Recorded as <strong>Pending</strong> — the request will then be verified and approved
+            by the authorized officers for the amount. Maximum allowable amount:
+            <strong>&#8369; {{ "{:,.2f}".format(max_amount) }}</strong>.
+        </p>
+        <form method="POST" id="txForm" novalidate>
             <div class="mb-3">
                 <label class="form-label">Description *</label>
                 <input type="text" name="description" class="form-control" required>
@@ -21,7 +26,12 @@
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Amount (PHP) *</label>
-                    <input type="number" step="0.01" min="0" name="amount" class="form-control" required>
+                    <input type="number"
+                           step="0.01" min="0.01" max="{{ max_amount }}"
+                           name="amount" id="amountInput"
+                           class="form-control" required>
+                    <div class="form-text">Positive amount only, up to &#8369; {{ "{:,.2f}".format(max_amount) }}.</div>
+                    <div id="amountError" class="text-danger small mt-1 d-none"></div>
                 </div>
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Date</label>
@@ -37,22 +47,38 @@
                     {% endfor %}
                 </select>
             </div>
-            <div class="mb-3">
-                <label class="form-label">Status</label>
-                <select name="status" class="form-select">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                </select>
-            </div>
             <div class="mb-4">
                 <label class="form-label">Remarks</label>
                 <textarea name="remarks" class="form-control" rows="2"></textarea>
             </div>
             <div class="d-flex gap-2">
-                <button type="submit" class="btn btn-primary">Save Transaction</button>
+                <button type="submit" class="btn btn-primary">Submit for Approval</button>
                 <a href="{{ url_for('finance.dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
             </div>
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.getElementById('txForm').addEventListener('submit', function (e) {
+        var amount = parseFloat(document.getElementById('amountInput').value);
+        var max = {{ max_amount }};
+        var error = document.getElementById('amountError');
+        if (isNaN(amount) || amount <= 0) {
+            error.textContent = 'Amount must be a positive number.';
+            error.classList.remove('d-none');
+            e.preventDefault();
+            return;
+        }
+        if (amount > max) {
+            error.textContent = 'Amount exceeds the maximum allowable of \u20b1 ' + max.toLocaleString(undefined, { minimumFractionDigits: 2 }) + '.';
+            error.classList.remove('d-none');
+            e.preventDefault();
+            return;
+        }
+        error.classList.add('d-none');
+    });
+</script>
 {% endblock %}

@@ -26,6 +26,7 @@ BENEFICIARY_SEGMENTS = ["Youth", "Senior Citizens", "Farmers", "Women-led Househ
 ACTIVITY_STATUSES = ["Scheduled", "Ongoing", "Completed", "Cancelled"]
 
 MOA_STATUSES = ["Draft", "Pending", "Active", "Expired", "Terminated"]
+MOU_STATUSES = MOA_STATUSES
 
 DONATION_STATUSES = ["Active", "Inactive"]
 
@@ -40,7 +41,7 @@ DOCUMENT_CATEGORIES = [
 ]
 
 TRANSACTION_TYPES = ["Contribution", "Expense", "Allocation"]
-TRANSACTION_STATUSES = ["Active", "Inactive"]
+TRANSACTION_STATUSES = ["Pending", "Verified", "Approved", "Rejected"]
 
 
 class Notification(db.Model):
@@ -109,6 +110,7 @@ class Project(db.Model):
     beneficiaries = db.relationship("Beneficiary", backref="project", lazy=True, cascade="all, delete-orphan")
     activities = db.relationship("Activity", backref="project", lazy=True, cascade="all, delete-orphan")
     moas = db.relationship("MOA", backref="project", lazy=True)
+    mous = db.relationship("MOU", backref="project", lazy=True)
     accomplishments = db.relationship("AccomplishmentReport", backref="project", lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -165,6 +167,7 @@ class Partner(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     moas = db.relationship("MOA", backref="partner", lazy=True)
+    mous = db.relationship("MOU", backref="partner", lazy=True)
     donations = db.relationship("Donation", backref="partner", lazy=True)
 
     def __repr__(self):
@@ -208,6 +211,30 @@ class MOA(db.Model):
 
     def __repr__(self):
         return f"<MOA {self.title}>"
+
+
+class MOU(db.Model):
+    """Memorandum of Understanding — non-binding partnership intent record.
+
+    Managed with the same workflow as MOAs so institutional linkage documents
+    (formal agreements and intent documents) can be tracked side by side.
+    """
+    __tablename__ = "mous"
+
+    id = db.Column(db.Integer, primary_key=True)
+    partner_id = db.Column(db.Integer, db.ForeignKey("partners.id"), nullable=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=True)
+    title = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    status = db.Column(db.String(20), nullable=False, default="Draft")
+    start_date = db.Column(db.Date, nullable=True)
+    end_date = db.Column(db.Date, nullable=True)
+    file_name = db.Column(db.String(255), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<MOU {self.title}>"
 
 
 class AccomplishmentReport(db.Model):
@@ -282,7 +309,12 @@ class MLModel(db.Model):
 
 
 class FinancialTransaction(db.Model):
-    """Financial record for contribution funds (income / expense / allocation)."""
+    """Financial record for contribution funds (income / expense / allocation).
+
+    Follows a documented approval workflow: every transaction is recorded as
+    Pending, then Verified and Approved (or Rejected) by users whose role has
+    the required authority for the requested amount.
+    """
     __tablename__ = "financial_transactions"
 
     id = db.Column(db.Integer, primary_key=True)
@@ -291,13 +323,24 @@ class FinancialTransaction(db.Model):
     amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=True)
     transaction_date = db.Column(db.Date, default=datetime.utcnow)
-    status = db.Column(db.String(20), nullable=False, default="Active")
+    status = db.Column(db.String(20), nullable=False, default="Pending")
     remarks = db.Column(db.Text, nullable=True)
     recorded_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Approval workflow
+    verifier_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    verified_at = db.Column(db.DateTime, nullable=True)
+    approver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    approved_at = db.Column(db.DateTime, nullable=True)
+    rejected_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    rejected_at = db.Column(db.DateTime, nullable=True)
+    rejection_reason = db.Column(db.Text, nullable=True)
 
     project = db.relationship("Project", backref="financial_transactions")
-    recorder = db.relationship("User", backref="financial_transactions")
+    recorder = db.relationship("User", backref="financial_transactions", foreign_keys=[recorded_by])
+    verifier = db.relationship("User", backref="verified_transactions", foreign_keys=[verifier_id])
+    approver = db.relationship("User", backref="approved_transactions", foreign_keys=[approver_id])
+    rejector = db.relationship("User", backref="rejected_transactions", foreign_keys=[rejected_by])
 
     def __repr__(self):
         return f"<FinancialTransaction {self.description} {self.amount}>"

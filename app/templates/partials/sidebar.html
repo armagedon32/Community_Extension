@@ -6,7 +6,10 @@
     <nav class="nav flex-column">
         <div class="nav-section">Main</div>
         <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}">
-            <i class="bi bi-speedometer2"></i> Dashboard
+            <i class="bi bi-folder2-open"></i> Extension Dashboard
+        </a>
+        <a class="nav-link {% if request.endpoint == 'dashboard.linkages' %}active{% endif %}" href="{{ url_for('dashboard.linkages') }}">
+            <i class="bi bi-building"></i> Institutional Linkages
         </a>
         <div class="nav-section">Operations</div>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('projects.') %}active{% endif %}" href="{{ url_for('projects.list_projects') }}">
@@ -23,6 +26,9 @@
         </a>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('moas.') %}active{% endif %}" href="{{ url_for('moas.list_moas') }}">
             <i class="bi bi-file-earmark-text"></i> MOA
+        </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('mous.') %}active{% endif %}" href="{{ url_for('mous.list_mous') }}">
+            <i class="bi bi-file-earmark-check"></i> MOU
         </a>
         <div class="nav-section">Analytics</div>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('reports.') %}active{% endif %}" href="{{ url_for('reports.index') }}">

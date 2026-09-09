@@ -5,9 +5,24 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div>
         <h4 class="fw-bold mb-0">Financial Transactions</h4>
-        <span class="text-muted small">Recorded contribution, expense, and allocation records</span>
+        <span class="text-muted small">Recorded contribution, expense, and allocation records with approval workflow</span>
     </div>
     <a href="{{ url_for('finance.new_transaction') }}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> New Transaction</a>
+</div>
+
+{% set tier = tier_for_amount(0) %}
+<div class="card p-3 mb-4">
+    <div class="d-flex flex-wrap align-items-center gap-2 small text-muted">
+        <i class="bi bi-shield-lock text-primary"></i>
+        <span class="fw-semibold text-dark">Approval authority:</span>
+        {% for t in APPROVAL_TIERS %}
+        <span class="badge text-bg-light border">
+            {{ t.tier }} ({{ t.label }}) &le; &#8369; {{ "{:,.0f}".format(tier_max_amount(t, MAX_TRANSACTION_AMOUNT)) }}
+            &middot; Verify: {{ t.verifiers|join(' / ') }} &middot; Approve: {{ t.approvers|join(' / ') }}
+        </span>
+        {% endfor %}
+        <span class="badge text-bg-light border">Max amount: &#8369; {{ "{:,.2f}".format(MAX_TRANSACTION_AMOUNT) }}</span>
+    </div>
 </div>
 
 <div class="card">
@@ -19,34 +34,116 @@
                         <th>Date</th>
                         <th>Description</th>
                         <th>Type</th>
-                        <th>Project</th>
-                        <th>Status</th>
                         <th class="text-end">Amount</th>
+                        <th>Approval Tier</th>
+                        <th>Status</th>
+                        <th>Verify</th>
+                        <th>Approve / Reject</th>
+                        <th class="text-end">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for t in transactions %}
+                    {% set tier = tier_for_amount(t.amount) %}
                     <tr>
-                        <td>{{ t.transaction_date.strftime('%b %d, %Y') }}</td>
+                        <td class="small text-nowrap">{{ t.transaction_date.strftime('%b %d, %Y') }}</td>
                         <td class="fw-semibold">{{ t.description }}</td>
                         <td>
                             {% if t.transaction_type == 'Contribution' %}<span class="badge text-bg-success">Contribution</span>
                             {% elif t.transaction_type == 'Expense' %}<span class="badge text-bg-danger">Expense</span>
                             {% else %}<span class="badge text-bg-warning">Allocation</span>{% endif %}
                         </td>
-                        <td>{{ t.project.title if t.project else '—' }}</td>
+                        <td class="text-end fw-semibold text-nowrap">&#8369; {{ "{:,.2f}".format(t.amount) }}</td>
                         <td>
-                            {% if t.status == 'Active' %}<span class="badge text-bg-primary">Active</span>
-                            {% else %}<span class="badge text-bg-secondary">Inactive</span>{% endif %}
+                            <span class="badge text-bg-light border">{{ tier.tier }}</span>
+                            <span class="badge text-bg-light border">{{ tier.label }}</span>
                         </td>
-                        <td class="text-end fw-semibold">&#8369; {{ "{:,.2f}".format(t.amount) }}</td>
+                        <td>
+                            {% if t.status == 'Pending' %}<span class="badge text-bg-warning">Pending</span>
+                            {% elif t.status == 'Verified' %}<span class="badge text-bg-info">Verified</span>
+                            {% elif t.status == 'Approved' %}<span class="badge text-bg-success">Approved</span>
+                            {% else %}<span class="badge text-bg-danger">Rejected</span>{% endif %}
+                        </td>
+                        <td class="small">
+                            {% if t.verifier %}
+                                <span class="d-block fw-semibold">{{ t.verifier.full_name }}</span>
+                                <span class="text-muted">{{ t.verified_at.strftime('%b %d, %Y %H:%M') if t.verified_at }}</span>
+                            {% else %}
+                                <span class="text-muted">&mdash; {{ tier.verifiers|join(' / ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">
+                            {% if t.status == 'Rejected' %}
+                                <span class="d-block fw-semibold text-danger">{{ t.rejector.full_name if t.rejector }}</span>
+                                <span class="text-muted">{{ t.rejected_at.strftime('%b %d, %Y %H:%M') if t.rejected_at }}</span>
+                                {% if t.rejection_reason %}<span class="d-block text-muted">"{{ t.rejection_reason }}"</span>{% endif %}
+                            {% elif t.approver %}
+                                <span class="d-block fw-semibold">{{ t.approver.full_name }}</span>
+                                <span class="text-muted">{{ t.approved_at.strftime('%b %d, %Y %H:%M') if t.approved_at }}</span>
+                            {% else %}
+                                <span class="text-muted">&mdash; {{ tier.approvers|join(' / ') }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end text-nowrap">
+                            {% if t.status in ['Pending', 'Verified'] %}
+                                {% if t.status == 'Pending' and can_verify(current_user, t.amount) %}
+                                <form method="POST" action="{{ url_for('finance.verify_transaction', tx_id=t.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-info">Verify</button>
+                                </form>
+                                {% endif %}
+                                {% if can_approve(current_user, t.amount) %}
+                                <form method="POST" action="{{ url_for('finance.approve_transaction', tx_id=t.id) }}" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-success">Approve</button>
+                                </form>
+                                {% endif %}
+                                {% if can_reject(current_user, t.amount) %}
+                                <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#rejectModal" data-txid="{{ t.id }}" data-desc="{{ t.description }}">Reject</button>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted small">Closed</span>
+                            {% endif %}
+                        </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" class="text-center text-muted py-4">No transactions recorded.</td></tr>
+                    <tr><td colspan="9" class="text-center text-muted py-4">No transactions recorded.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="rejectModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" id="rejectForm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Reject Transaction</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="small text-muted mb-2">You are about to reject <strong id="rejectDesc"></strong>.</p>
+                    <label class="form-label">Rejection reason *</label>
+                    <textarea name="rejection_reason" class="form-control" rows="3" required placeholder="State the reason for rejection"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger">Reject Transaction</button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    var rejectModal = document.getElementById('rejectModal');
+    rejectModal.addEventListener('show.bs.modal', function (event) {
+        var btn = event.relatedTarget;
+        var form = document.getElementById('rejectForm');
+        form.action = "{{ url_for('finance.reject_transaction', tx_id=0) }}".replace('/0/', '/' + btn.dataset.txid + '/');
+        document.getElementById('rejectDesc').textContent = btn.dataset.desc;
+    });
+</script>
 {% endblock %}

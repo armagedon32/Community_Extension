@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+{% block title %}Institutional Linkages Dashboard - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+{% macro agreement_badge(status) %}
+{% if status == 'Active' %}<span class="badge text-bg-success">Active</span>
+{% elif status == 'Pending' %}<span class="badge text-bg-warning">Pending</span>
+{% elif status == 'Expired' %}<span class="badge text-bg-secondary">Expired</span>
+{% elif status == 'Terminated' %}<span class="badge text-bg-danger">Terminated</span>
+{% else %}<span class="badge text-bg-info">Draft</span>{% endif %}
+{% endmacro %}
+
+{% macro linkage_insights() %}
+{% set partner_count = total_partners or 0 %}
+{% set ns = namespace(top_type='n/a', top_type_n=0, act='n/a', act_n=0) %}
+{% for k, v in partner_types.items() %}{% if v > ns.top_type_n %}{% set ns.top_type_n = v %}{% set ns.top_type = k %}{% endif %}{% endfor %}
+{% for k, v in partner_engagement.items() %}{% if v > ns.act_n %}{% set ns.act_n = v %}{% set ns.act = k %}{% endif %}{% endfor %}
+{% set active_moas = moa_status_dist.get('Active', 0) or 0 %}
+{% set active_mous = mou_status_dist.get('Active', 0) or 0 %}
+{% set expiring_total = expiring_moas|length + expiring_mous|length %}
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-lightbulb text-warning fs-5"></i>
+        <h6 class="fw-bold mb-0">Institutional Linkages Interpretation</h6>
+    </div>
+    <p class="small text-muted mb-2">
+        This Institutional Linkages Dashboard focuses on partner organizations and formalized partnerships (MOAs and MOUs) for sustainable collaboration.
+    </p>
+    <ul class="small text-muted mb-0 ps-3">
+        {% if partner_count == 0 %}
+        <li>No partner organizations have been registered yet. Add partners, then record MOAs/MOUs to monitor institutional partnerships.</li>
+        {% else %}
+        <li class="mb-1">The institution partners with <strong>{{ total_partners }}</strong> organizations, of which <strong>{{ active_partners }}</strong> are currently active. Partnerships are most concentrated in <strong>{{ ns.top_type }}</strong> ({{ ns.top_type_n }}).</li>
+        <li class="mb-1">Formal partnerships: <strong>{{ active_moas }}</strong> active MOA(s) and <strong>{{ active_mous }}</strong> active MOU(s) out of {{ total_moas }} and {{ total_mous }} records respectively.</li>
+        <li class="mb-1">
+            {% if expiring_total %}
+            <span class="text-danger"><i class="bi bi-exclamation-triangle"></i> <strong>{{ expiring_total }}</strong> agreement(s) expire within 30 days — schedule renewal or decisions before lapse.</span>
+            {% else %}No agreement is expiring within the next 30 days.{% endif %}
+        </li>
+        {% endif %}
+    </ul>
+    <div class="row g-3 mt-1">
+        <div class="col-md-4">
+            <div class="border rounded p-2 small text-muted">
+                <strong class="text-primary">Partnership portfolio:</strong>
+                A diverse mix of partner types (LGU, NGO, academic, private) signals broad institutional reach. The dominant engagement level is <strong>{{ ns.act }}</strong> ({{ ns.act_n }}).
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 small text-muted">
+                <strong class="text-primary">Agreement health:</strong>
+                Comparing Active vs Pending/Expired/Terminated MOAs and MOUs shows which formal partnerships are sustained and which require renewal or exit decisions.
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="border rounded p-3 small text-muted">
+                <strong class="text-primary">Audit &amp; compliance basis:</strong>
+                MOA and MOU records — with uploaded files and dates — provide the documentary trail for institutional compliance reporting and partner accountability.
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Institutional Linkages Dashboard</h4>
+        <span class="text-muted small">Partner organizations, MOAs &amp; MOUs &middot; Welcome, {{ current_user.full_name }}</span>
+    </div>
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-primary"><i class="bi bi-folder2-open"></i> Community Extension</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-success">{{ total_partners }}</div>
+                    <div class="label">Partner Organizations</div>
+                </div>
+                <div class="icon bg-soft-success"><i class="bi bi-building"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-primary">{{ active_partners }}</div>
+                    <div class="label">Active Partners</div>
+                </div>
+                <div class="icon bg-soft-primary"><i class="bi bi-person-check"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-info">{{ total_moas }}</div>
+                    <div class="label">MOA Records</div>
+                </div>
+                <div class="icon bg-soft-info"><i class="bi bi-file-earmark-text"></i></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <div class="value text-warning">{{ total_mous }}</div>
+                    <div class="label">MOU Records</div>
+                </div>
+                <div class="icon bg-soft-warning"><i class="bi bi-file-earmark-check"></i></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="card stat-card p-3 text-center"><div class="value text-success">{{ moa_status_dist.get('Active', 0) }}</div><div class="label">Active MOAs</div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat-card p-3 text-center"><div class="value text-success">{{ mou_status_dist.get('Active', 0) }}</div><div class="label">Active MOUs</div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat-card p-3 text-center"><div class="value text-danger">{{ expiring_moas|length + expiring_mous|length }}</div><div class="label">Expiring in 30 Days</div></div></div>
+    <div class="col-6 col-lg-3"><div class="card stat-card p-3 text-center"><div class="value text-dark">{{ partner_engagement.values()|sum }}</div><div class="label">Engaged Partners</div></div></div>
+</div>
+
+<div class="d-flex gap-2 mb-4">
+    <a href="{{ url_for('partners.list_partners') }}" class="btn btn-outline-primary"><i class="bi bi-building"></i> Partners &amp; Linkages</a>
+    <a href="{{ url_for('moas.list_moas') }}" class="btn btn-outline-info"><i class="bi bi-file-earmark-text"></i> Manage MOAs</a>
+    <a href="{{ url_for('mous.list_mous') }}" class="btn btn-outline-warning"><i class="bi bi-file-earmark-check"></i> Manage MOUs</a>
+</div>
+
+{{ linkage_insights() }}
+
+{% if expiring_moas or expiring_mous %}
+<div class="alert alert-danger d-flex align-items-start gap-2">
+    <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+    <div>
+        <strong>Agreements expiring in the next 30 days.</strong> Review and renew or terminate on time.
+        <ul class="mb-0 mt-1 ps-3">
+            {% for m in expiring_moas %}
+            <li class="small">MOA: {{ m.title }} ({{ m.partner.name if m.partner else '—' }}) — {{ m.end_date.strftime('%b %d, %Y') }}</li>
+            {% endfor %}
+            {% for m in expiring_mous %}
+            <li class="small">MOU: {{ m.title }} ({{ m.partner.name if m.partner else '—' }}) — {{ m.end_date.strftime('%b %d, %Y') }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Partner Types</h6>
+            <div id="partnerChart"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Partner Engagement Level</h6>
+            <div id="engagementChart"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">MOA Status</h6>
+            <div id="moaStatusChart"></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">MOU Status</h6>
+            <div id="mouStatusChart"></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">Recent MOAs</h6>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('moas.list_moas') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+                    <a href="{{ url_for('moas.create_moa') }}" class="btn btn-sm btn-outline-primary">New MOA</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr><th>Title</th><th>Partner</th><th>Status</th><th>End Date</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for m in recent_moas %}
+                        <tr>
+                            <td class="fw-semibold small">
+                                <a class="text-decoration-none" href="{{ url_for('moas.edit_moa', moa_id=m.id) }}">{{ m.title }}</a>
+                            </td>
+                            <td class="small">{{ m.partner.name if m.partner else '—' }}</td>
+                            <td>{{ agreement_badge(m.status) }}</td>
+                            <td class="small">{{ m.end_date.strftime('%b %d, %Y') if m.end_date else '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No MOAs yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">Recent MOUs</h6>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('mous.list_mous') }}" class="btn btn-sm btn-outline-secondary">View All</a>
+                    <a href="{{ url_for('mous.create_mou') }}" class="btn btn-sm btn-outline-primary">New MOU</a>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr><th>Title</th><th>Partner</th><th>Status</th><th>End Date</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for m in recent_mous %}
+                        <tr>
+                            <td class="fw-semibold small">
+                                <a class="text-decoration-none" href="{{ url_for('mous.edit_mou', mou_id=m.id) }}">{{ m.title }}</a>
+                            </td>
+                            <td class="small">{{ m.partner.name if m.partner else '—' }}</td>
+                            <td>{{ agreement_badge(m.status) }}</td>
+                            <td class="small">{{ m.end_date.strftime('%b %d, %Y') if m.end_date else '—' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4" class="text-center text-muted">No MOUs yet.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const partnerData = {{ partner_types | tojson }};
+    const engagementData = {{ partner_engagement | tojson }};
+    const moaStatusData = {{ moa_status_dist | tojson }};
+    const mouStatusData = {{ mou_status_dist | tojson }};
+
+    const agreementColors = { "Draft": "#0891b2", "Pending": "#f59e0b", "Active": "#16a34a", "Expired": "#64748b", "Terminated": "#dc2626" };
+
+    function withPct(summary) {
+        const vals = Object.values(summary);
+        const total = vals.reduce((a, b) => a + b, 0);
+        return (v) => total ? `${v} (${((v / total) * 100).toFixed(1)}%)` : String(v);
+    }
+
+    new ApexCharts(document.querySelector("#partnerChart"), {
+        chart: { type: "pie", height: 280 },
+        labels: Object.keys(partnerData),
+        series: Object.values(partnerData),
+        legend: { position: "bottom" },
+        dataLabels: { enabled: false },
+        tooltip: { y: { formatter: withPct(partnerData) } }
+    }).render();
+
+    new ApexCharts(document.querySelector("#engagementChart"), {
+        chart: { type: "bar", height: 280 },
+        series: [{ name: "Partners", data: Object.values(engagementData) }],
+        xaxis: { categories: Object.keys(engagementData), labels: { style: { fontSize: "11px" } } },
+        colors: ["#7c3aed"],
+        plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
+        dataLabels: { enabled: false },
+        grid: { borderColor: "#e2e8f0" },
+        tooltip: { y: { formatter: withPct(engagementData) } }
+    }).render();
+
+    new ApexCharts(document.querySelector("#moaStatusChart"), {
+        chart: { type: "donut", height: 280 },
+        labels: Object.keys(moaStatusData),
+        series: Object.values(moaStatusData),
+        colors: Object.keys(moaStatusData).map(k => agreementColors[k] || "#38bdf8"),
+        legend: { position: "bottom" },
+        plotOptions: { pie: { donut: { size: "65%" } } },
+        dataLabels: { enabled: false },
+        tooltip: { y: { formatter: withPct(moaStatusData) } }
+    }).render();
+
+    new ApexCharts(document.querySelector("#mouStatusChart"), {
+        chart: { type: "donut", height: 280 },
+        labels: Object.keys(mouStatusData),
+        series: Object.values(mouStatusData),
+        colors: Object.keys(mouStatusData).map(k => agreementColors[k] || "#38bdf8"),
+        legend: { position: "bottom" },
+        plotOptions: { pie: { donut: { size: "65%" } } },
+        dataLabels: { enabled: false },
+        tooltip: { y: { formatter: withPct(mouStatusData) } }
+    }).render();
+</script>
+{% endblock %}

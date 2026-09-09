@@ -37,6 +37,7 @@ def create_app(config_class=Config):
     from app.routes.partners import partners_bp
     from app.routes.activities import activities_bp
     from app.routes.moas import moas_bp
+    from app.routes.mous import mous_bp
     from app.routes.reports import reports_bp
     from app.routes.ml import ml_bp
     from app.routes.finance import finance_bp
@@ -54,6 +55,7 @@ def create_app(config_class=Config):
     app.register_blueprint(partners_bp)
     app.register_blueprint(activities_bp)
     app.register_blueprint(moas_bp)
+    app.register_blueprint(mous_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(ml_bp)
     app.register_blueprint(finance_bp)
@@ -107,6 +109,44 @@ def _ensure_schema(app):
             stmt = f"ALTER TABLE ml_models ADD COLUMN {col} {generic_ddl}"
         with db.engine.begin() as conn:
             conn.execute(text(stmt))
+
+    # Financial transaction approval workflow columns
+    finance_cols = {
+        "verifier_id": ("INTEGER", "INTEGER"),
+        "verified_at": ("DATETIME", "TIMESTAMP"),
+        "approver_id": ("INTEGER", "INTEGER"),
+        "approved_at": ("DATETIME", "TIMESTAMP"),
+        "rejected_by": ("INTEGER", "INTEGER"),
+        "rejected_at": ("DATETIME", "TIMESTAMP"),
+        "rejection_reason": ("TEXT", "TEXT"),
+    }
+    try:
+        existing = {c["name"] for c in inspect(db.engine).get_columns("financial_transactions")}
+    except Exception:
+        return
+
+    for col, (generic_ddl, pg_ddl) in finance_cols.items():
+        if col in existing:
+            continue
+        if dialect == "postgresql":
+            stmt = f"ALTER TABLE financial_transactions ADD COLUMN IF NOT EXISTS {col} {pg_ddl}"
+        else:
+            stmt = f"ALTER TABLE financial_transactions ADD COLUMN {col} {generic_ddl}"
+        with db.engine.begin() as conn:
+            conn.execute(text(stmt))
+
+    # Data migration: legacy statuses -> approval workflow statuses
+    with db.engine.begin() as conn:
+        conn.execute(text(
+            "UPDATE financial_transactions SET status = 'Approved', "
+            "approver_id = recorded_by, approved_at = created_at "
+            "WHERE status = 'Active'"
+        ))
+        conn.execute(text(
+            "UPDATE financial_transactions SET status = 'Rejected', "
+            "rejected_by = recorded_by, rejected_at = created_at "
+            "WHERE status = 'Inactive'"
+        ))
 
 
 def _bootstrap(app):

@@ -128,6 +128,137 @@
     </div>
 </div>
 
+{# ===== Dataset & Split Documentation ===== #}
+{% if dataset %}
+{% set dr = dataset.validation.dropped %}
+{% set dropped_total = dr.missing_label + dr.invalid_label + dr.empty_content + dr.duplicate %}
+<div class="card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-journal-check text-success fs-5"></i>
+            <h6 class="fw-bold mb-0">Dataset &amp; Split Documentation</h6>
+        </div>
+        <span class="badge text-bg-success" style="font-size:.72rem;">{{ dataset.dataset_id }}</span>
+    </div>
+    <p class="small text-muted mb-3">
+        <strong>Split method:</strong> {{ dataset.split_method }}
+        ({{ '%.0f'|format(dataset.split.train * 100) }}% train / {{ '%.0f'|format(dataset.split.test * 100) }}% test).
+        Ground-truth labels are validated against the registered category/domain lists and exact-duplicate documents
+        are removed <strong>before</strong> the split, so the same document can never appear on both sides. The split
+        itself is applied before any fitting (no data leakage).
+    </p>
+
+    <div class="row text-center g-2 mb-3">
+        <div class="col-6 col-lg">
+            <div class="border rounded p-2">
+                <div class="fw-bold fs-5">{{ dataset.validation.scanned }}</div>
+                <div class="text-muted small">Labeled docs scanned</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="border rounded p-2">
+                <div class="fw-bold fs-5 text-success">{{ dataset.validation.accepted }}</div>
+                <div class="text-muted small">Accepted (this run)</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="border rounded p-2">
+                <div class="fw-bold fs-5">{{ dataset.train_count }}</div>
+                <div class="text-muted small">Train ({{ '%.0f'|format(dataset.split.train * 100) }}%)</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="border rounded p-2">
+                <div class="fw-bold fs-5 text-info">{{ dataset.test_count }}</div>
+                <div class="text-muted small">Test ({{ '%.0f'|format(dataset.split.test * 100) }}%)</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg">
+            <div class="border rounded p-2">
+                <div class="fw-bold fs-5 text-danger">{{ dropped_total }}</div>
+                <div class="text-muted small">Dropped by validation</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-5">
+            <h6 class="fw-bold small text-uppercase text-muted mb-2">Ground-Truth Label Validation</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Validation step</th><th class="text-center">Documents</th></tr>
+                    </thead>
+                    <tbody>
+                        <tr><td>Labeled documents scanned</td><td class="text-center">{{ dataset.validation.scanned }}</td></tr>
+                        <tr class="table-success"><td><strong>Accepted (valid labels + unique content)</strong></td><td class="text-center"><strong>{{ dataset.validation.accepted }}</strong></td></tr>
+                        <tr><td>Dropped — missing label</td><td class="text-center">{{ dr.missing_label }}</td></tr>
+                        <tr><td>Dropped — label not in allowed list</td><td class="text-center">{{ dr.invalid_label }}</td></tr>
+                        <tr><td>Dropped — empty content</td><td class="text-center">{{ dr.empty_content }}</td></tr>
+                        <tr><td>Dropped — duplicate/overlapping document</td><td class="text-center">{{ dr.duplicate }}</td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="small text-muted mt-2 mb-0">
+                Only the <strong>Accepted</strong> documents ({{ dataset.validation.accepted }}) are used for this run;
+                {{ dataset.train_count }} went to training and {{ dataset.test_count }} to the held-out test set.
+            </p>
+        </div>
+        <div class="col-lg-7">
+            <h6 class="fw-bold small text-uppercase text-muted mb-2">Per-Category Train/Test Allocation</h6>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered align-middle mb-0">
+                    <thead class="table-light">
+                        <tr><th>Category</th><th class="text-center">Total</th><th class="text-center">Train</th><th class="text-center">Test</th><th class="text-center">Test %</th></tr>
+                    </thead>
+                    <tbody>
+                        {% for label, v in dataset.distribution.items() %}
+                        <tr>
+                            <td>{{ label }}</td>
+                            <td class="text-center">{{ v.total }}</td>
+                            <td class="text-center text-success">{{ v.train }}</td>
+                            <td class="text-center text-info">{{ v.test }}</td>
+                            <td class="text-center">{{ '%.0f'|format((v.test / v.total * 100) if v.total else 0) }}%</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <p class="small text-muted mt-2 mb-0">
+                Because the split is stratified per category, every sufficiently sized category keeps a proportional
+                share of its documents in the test set — preserving the dataset's class distribution in both splits.
+            </p>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-md-6">
+            <h6 class="fw-bold small text-uppercase text-muted mb-2">Training Document Identifiers ({{ dataset.train_document_ids|length }})</h6>
+            <div class="border rounded bg-light p-2 small" style="max-height:130px; overflow-y:auto;">
+                {% for doc_id in dataset.train_document_ids %}<code class="me-2 text-success">{{ doc_id }}</code>{% endfor %}
+            </div>
+        </div>
+        <div class="col-md-6">
+            <h6 class="fw-bold small text-uppercase text-muted mb-2">Testing Document Identifiers ({{ dataset.test_document_ids|length }})</h6>
+            <div class="border rounded bg-light p-2 small" style="max-height:130px; overflow-y:auto;">
+                {% for doc_id in dataset.test_document_ids %}<code class="me-2 text-info">{{ doc_id }}</code>{% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="alert {{ 'alert-success' if not dataset.overlap_document_ids else 'alert-danger' }} small mb-0 mt-3">
+        <i class="bi {{ 'bi-check-circle' if not dataset.overlap_document_ids else 'bi-exclamation-triangle' }}"></i>
+        <strong>Overlap / duplicate check:</strong>
+        {% if dataset.overlap_document_ids %}
+        {{ dataset.overlap_document_ids|length }} document(s) appear in both the training and testing sets:
+        {{ dataset.overlap_document_ids }}. Re-train after removing the duplicates.
+        {% else %}
+        0 documents appear in both the training and testing sets — the two splits are completely disjoint.
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
 {# ===== Per-class classification report ===== #}
 <div class="card p-4 mb-4">
     <div class="d-flex align-items-center gap-2 mb-3">
@@ -290,9 +421,10 @@
     <p class="small text-muted mb-0">
         {{ implied_by }} Model version <strong>{{ model.model_version or '—' }}</strong> trained on
         {{ chart.train_samples or '—' }} documents and evaluated on {{ chart.test_samples or '—' }} held-out
-        test documents (stratified 80/20 split, random_state=42, applied before fitting to prevent data
-        leakage). Report generated by {{ current_user.full_name }} ({{ current_user.role }}) on
-        {{ generated_at }}.
+        test documents ({{ dataset.split_method if dataset else 'stratified 80/20 split, random_state=42' }},
+        applied before fitting to prevent data leakage). Dataset identifier:
+        <strong>{{ dataset.dataset_id if dataset else '—' }}</strong>. Report generated by
+        {{ current_user.full_name }} ({{ current_user.role }}) on {{ generated_at }}.
     </p>
 </div>
 {% endblock %}

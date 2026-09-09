@@ -261,8 +261,15 @@ def _attach_test_predictions(metrics, docs):
 
 def _record_model_run(name, metrics, dataset_summary=None, version=None):
     """Record a trained (not yet activated) model run."""
-    dist = None
-    if dataset_summary:
+    ds = metrics.get("dataset") or {}
+    dist = json.dumps(ds.get("distribution") or {})
+    split_ratio = "80/20"
+    if ds.get("split"):
+        split_ratio = "{}/{}".format(
+            int(ds["split"].get("train", 0.8) * 100),
+            int(ds["split"].get("test", 0.2) * 100),
+        )
+    if not dist and dataset_summary:
         if "Project Category" in name:
             dist = json.dumps(dataset_summary.get("domain_distribution") or {})
         else:
@@ -283,7 +290,9 @@ def _record_model_run(name, metrics, dataset_summary=None, version=None):
         model_version=version,
         train_samples=metrics.get("train_samples"),
         test_samples=metrics.get("test_samples"),
-        split_ratio="80/20",
+        split_ratio=split_ratio,
+        split_method=ds.get("split_method") or metrics.get("split_method"),
+        dataset_id=metrics.get("dataset_id"),
     )
     db.session.add(model_run)
     db.session.commit()
@@ -315,13 +324,15 @@ def train_model():
     )
 
     # --- Document type model ---
-    texts = [doc.content or "" for doc in type_docs]
-    labels = [doc.category for doc in type_docs]
     started = time.time()
-    model, vectorizer, metrics = engine.train_naive_bayes_detailed(texts, labels)
+    try:
+        model, vectorizer, metrics, used_type_docs = engine.build_and_train(type_docs, "type")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+        return redirect(url_for("ml.dashboard"))
     duration = round(time.time() - started, 2)
     metrics["training_duration"] = duration
-    _attach_test_predictions(metrics, type_docs)
+    _attach_test_predictions(metrics, used_type_docs)
     engine.save_model(model, vectorizer, metrics["classes"], "type")
 
     _record_model_run(
@@ -339,18 +350,22 @@ def train_model():
     )
     d_metrics = None
     if len(domain_docs) >= 3:
-        domain_texts = [doc.content or "" for doc in domain_docs]
-        domain_labels = [doc.domain for doc in domain_docs]
         started = time.time()
-        d_model, d_vec, d_metrics = engine.train_domain_model_detailed(domain_texts, domain_labels)
-        d_metrics["training_duration"] = round(time.time() - started, 2)
-        _attach_test_predictions(d_metrics, domain_docs)
-        _record_model_run(
-            "Multinomial Naive Bayes - Project Category",
-            d_metrics,
-            dataset_summary=summary,
-            version=_next_version("Multinomial Naive Bayes - Project Category"),
-        )
+        try:
+            d_model, d_vec, d_metrics, used_domain_docs = engine.build_and_train(domain_docs, "domain")
+        except ValueError as exc:
+            flash(str(exc), "warning")
+            d_metrics = None
+        if d_metrics:
+            d_metrics["training_duration"] = round(time.time() - started, 2)
+            _attach_test_predictions(d_metrics, used_domain_docs)
+            engine.save_model(d_model, d_vec, d_metrics["classes"], "domain")
+            _record_model_run(
+                "Multinomial Naive Bayes - Project Category",
+                d_metrics,
+                dataset_summary=summary,
+                version=_next_version("Multinomial Naive Bayes - Project Category"),
+            )
 
     verdict = []
     for nm, m in (("Document Type", metrics), ("Project Category", d_metrics)):
@@ -462,11 +477,9 @@ def _ensure_models():
                 Document.query.filter(Document.is_training.is_(True)).all()
             )
             started = time.time()
-            model, vectorizer, metrics = engine.train_naive_bayes_detailed(
-                [d.content or "" for d in docs],
-                [d.category for d in docs],
-            )
+            model, vectorizer, metrics, used_docs = engine.build_and_train(docs, "type")
             metrics["training_duration"] = round(time.time() - started, 2)
+            _attach_test_predictions(metrics, used_docs)
             engine.save_model(model, vectorizer, metrics["classes"], "type")
             _record_model_run(
                 "Multinomial Naive Bayes - Document Type",
@@ -488,11 +501,10 @@ def _ensure_models():
                 Document.query.filter(Document.is_training.is_(True)).all()
             )
             started = time.time()
-            d_model, d_vec, d_metrics = engine.train_domain_model_detailed(
-                [d.content or "" for d in domain_docs],
-                [d.domain for d in domain_docs],
-            )
+            d_model, d_vec, d_metrics, used_domain_docs = engine.build_and_train(domain_docs, "domain")
             d_metrics["training_duration"] = round(time.time() - started, 2)
+            _attach_test_predictions(d_metrics, used_domain_docs)
+            engine.save_model(d_model, d_vec, d_metrics["classes"], "domain")
             _record_model_run(
                 "Multinomial Naive Bayes - Project Category",
                 d_metrics,
@@ -555,6 +567,9 @@ def _metrics_view(model):
             "per_class_test": m.get("per_class_test"),
             "classification_report": report,
             "test_predictions": m.get("test_predictions"),
+            "dataset": m.get("dataset"),
+            "split_method": m.get("split_method"),
+            "dataset_id": m.get("dataset_id"),
         }
     except Exception:
         return None
@@ -579,6 +594,7 @@ def model_detail(model_id):
         "ml/model_detail.html",
         model=model_run,
         chart=view,
+        dataset=view.get("dataset") if view else None,
         implied_by="Evaluation computed automatically from the actual "
                    "predictions on the held-out 20% testing dataset.",
         generated_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),

@@ -10,8 +10,10 @@ Two independent Multinomial Naive Bayes models are trained:
   2. "domain" - classifies the PROJECT CATEGORY / DOMAIN (Education, Livelihood,
                 Governance, Environment, ...)
 """
+import hashlib
 import json
 import os
+import random
 import re
 
 import joblib
@@ -27,9 +29,16 @@ from sklearn.metrics import (
 from sklearn.naive_bayes import MultinomialNB
 
 from app.ml.preprocess import preprocess, preprocess_domain
+from app.models import DOCUMENT_CATEGORIES, PROJECT_CATEGORIES
 
 MODEL_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
 os.makedirs(MODEL_DIR, exist_ok=True)
+
+# Documented, reproducible split configuration used everywhere a train/test
+# assignment is made.
+SPLIT_RATIO = {"train": 0.8, "test": 0.2}
+SPLIT_SEED = 42
+SPLIT_METHOD = "Stratified 80/20 by category (per-class allocation, random_state=42)"
 
 # Persisted artifacts per model kind (type / domain).
 _FILES = {
@@ -197,6 +206,192 @@ def get_dataset_summary(documents):
     }
 
 
+def _label_field(kind):
+    """DB column holding the ground-truth label for a classification kind."""
+    return "category" if kind == "type" else "domain"
+
+
+def _allowed_labels(kind):
+    """Ground-truth labels accepted for a classification kind."""
+    return set(DOCUMENT_CATEGORIES) if kind == "type" else set(PROJECT_CATEGORIES)
+
+
+def _content_key(content):
+    """Canonical content fingerprint for exact-duplicate detection."""
+    return re.sub(r"\s+", " ", (content or "").strip().lower())
+
+
+def validate_labeled_documents(documents, kind):
+    """Validate ground-truth labels and remove duplicate documents.
+
+    Performed BEFORE the train/test split so the split only ever sees verified,
+    de-duplicated data:
+      - a document must have a ground-truth label from the accepted category/
+        domain list and a non-empty content body;
+      - documents whose exact content (or title) repeats are dropped, keeping
+        only the first occurrence, so the same document can never appear in
+        both training and testing.
+
+    Returns ``(valid_docs, summary)`` where summary records how many documents
+    were scanned/accepted and how many were dropped and for what reason.
+    """
+    seen_content = set()
+    seen_title = set()
+    accepted = []
+    dropped = {"missing_label": 0, "invalid_label": 0, "empty_content": 0, "duplicate": 0}
+
+    label_field = _label_field(kind)
+    allowed = _allowed_labels(kind)
+
+    for doc in documents:
+        label = (getattr(doc, label_field) or "").strip()
+        title = (doc.title or "").strip()
+        content = (doc.content or "").strip()
+
+        if not label:
+            dropped["missing_label"] += 1
+            continue
+        if label not in allowed:
+            dropped["invalid_label"] += 1
+            continue
+        if not content:
+            dropped["empty_content"] += 1
+            continue
+
+        title_key = title.lower()
+        content_key = _content_key(content)
+        if title_key in seen_title or content_key in seen_content:
+            dropped["duplicate"] += 1
+            continue
+
+        seen_title.add(title_key)
+        seen_content.add(content_key)
+        accepted.append(doc)
+
+    return accepted, {
+        "kind": "document type" if kind == "type" else "project category",
+        "scanned": len(documents),
+        "accepted": len(accepted),
+        "dropped": dropped,
+    }
+
+
+def _dataset_id(docs, kind):
+    """Deterministic dataset identifier derived from the document ids."""
+    ids = sorted(str(d.id) for d in docs)
+    digest = hashlib.sha256("|".join(ids).encode("utf-8")).hexdigest()[:10]
+    return f"CELMIS-{kind}-D{len(ids)}-{digest}"
+
+
+def prepare_stratified_dataset(documents, kind):
+    """Validate labels, de-duplicate, then apply the documented 80/20 split.
+
+    Returns ``(valid_docs, meta)``. ``meta`` records everything needed to
+    reproduce and verify the split: dataset identifier, split method and seed,
+    per-category train/test distribution, the exact train/test document ids,
+    the overlap check, and the label-validation summary.
+    """
+    docs, validation = validate_labeled_documents(documents, kind)
+
+    label_field = _label_field(kind)
+    labels = [getattr(d, label_field) for d in docs]
+    ids = [d.id for d in docs]
+
+    indices = list(range(len(docs)))
+    idx_train, idx_test, y_train, y_test = _stratified_split(indices, labels)
+
+    train_ids = [ids[i] for i in idx_train]
+    test_ids = [ids[i] for i in idx_test]
+
+    distribution = {}
+    for label in sorted(set(labels)):
+        distribution[label] = {
+            "total": labels.count(label),
+            "train": sum(1 for i in idx_train if labels[i] == label),
+            "test": sum(1 for i in idx_test if labels[i] == label),
+        }
+
+    meta = {
+        "kind": validation["kind"],
+        "kind_code": kind,
+        "split_method": SPLIT_METHOD,
+        "split": dict(SPLIT_RATIO),
+        "split_seed": SPLIT_SEED,
+        "dataset_id": _dataset_id(docs, kind),
+        "train_count": len(train_ids),
+        "test_count": len(test_ids),
+        "validation": validation,
+        "distribution": distribution,
+        "train_document_ids": train_ids,
+        "test_document_ids": test_ids,
+        "overlap_document_ids": sorted(set(train_ids) & set(test_ids)),
+        "train_indices": idx_train,
+        "test_indices": idx_test,
+        "y_train": list(y_train),
+        "y_test": list(y_test),
+        "all_labels": sorted(set(labels)),
+    }
+    return docs, meta
+
+
+def build_and_train(documents, kind):
+    """Validated, leakage-free training pipeline with full reproducibility metadata.
+
+    Order of operations:
+      1. validate ground-truth labels (category/domain must be from the accepted list);
+      2. remove exact-duplicate documents;
+      3. stratified 80/20 split (seed 42) preserving each category's distribution;
+      4. fit TF-IDF on the training split ONLY;
+      5. fit Multinomial Naive Bayes; evaluate on the held-out test split.
+
+    Returns ``(model, vectorizer, metrics, used_documents)``. ``metrics["dataset"]``
+    records the total dataset size, category distribution, train/test counts, the
+    split method, and dataset identifiers for reproducibility/verification.
+    """
+    docs, meta = prepare_stratified_dataset(documents, kind)
+    if not docs:
+        raise ValueError("No validated labeled documents are available to train on.")
+
+    label_field = _label_field(kind)
+    texts = [doc.content or "" for doc in docs]
+    raw = [_preprocess_text(t, kind) for t in texts]
+
+    idx_train, idx_test = meta["train_indices"], meta["test_indices"]
+    y_train, y_test = meta["y_train"], meta["y_test"]
+
+    vectorizer = _vectorizer()
+    X_train = vectorizer.fit_transform([raw[i] for i in idx_train])
+    X_test = vectorizer.transform([raw[i] for i in idx_test])
+
+    model = MultinomialNB(alpha=1.0, fit_prior=(kind == "type"))
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    metrics = _evaluation_metrics(y_test, predictions, meta["all_labels"], len(docs), idx_train, idx_test)
+
+    metrics["split_method"] = meta["split_method"]
+    metrics["split_seed"] = meta["split_seed"]
+    metrics["dataset_id"] = meta["dataset_id"]
+    metrics["dataset"] = {
+        "kind": meta["kind"],
+        "kind_code": kind,
+        "split_method": meta["split_method"],
+        "split": meta["split"],
+        "split_seed": meta["split_seed"],
+        "dataset_id": meta["dataset_id"],
+        "train_count": meta["train_count"],
+        "test_count": meta["test_count"],
+        "validation": meta["validation"],
+        "distribution": meta["distribution"],
+        "train_document_ids": meta["train_document_ids"],
+        "test_document_ids": meta["test_document_ids"],
+        "overlap_document_ids": meta["overlap_document_ids"],
+    }
+
+    save_model(model, vectorizer, meta["all_labels"], kind)
+    return model, vectorizer, metrics, docs
+
+
 def _evaluation_metrics(y_test, predictions, unique_labels, total_samples, idx_train, idx_test):
     """Build the evaluation metric dict from a held-out test split.
 
@@ -312,21 +507,32 @@ def train_domain_model_detailed(texts, labels):
 
 
 def _stratified_split(indices, labels):
-    """Return train/test index lists using stratified 80/20 split."""
+    """Return train/test index lists using the documented stratified 80/20 split.
+
+    Each label/category is allocated to train and test separately so the class
+    distribution of the whole dataset is preserved in both splits. The allocation
+    is deterministic (``random.Random(SPLIT_SEED)``), making every split
+    reproducible. Every category with at least two documents contributes at
+    least one test document; a category with a single document is kept in the
+    training split (it cannot be meaningfully held out).
+    """
     from collections import defaultdict
 
     by_label = defaultdict(list)
     for i, label in zip(indices, labels):
         by_label[label].append(i)
 
-    import random
-    random.seed(42)
+    rng = random.Random(SPLIT_SEED)
 
     train_idx = []
     test_idx = []
-    for label, items in by_label.items():
-        random.shuffle(items)
-        n_test = max(1, int(len(items) * 0.2))
+    for items in by_label.values():
+        rng.shuffle(items)
+        n = len(items)
+        if n == 1:
+            n_test = 0
+        else:
+            n_test = min(max(1, round(n * SPLIT_RATIO["test"])), n - 1)
         test_idx.extend(items[:n_test])
         train_idx.extend(items[n_test:])
 

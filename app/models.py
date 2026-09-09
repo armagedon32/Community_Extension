@@ -331,6 +331,8 @@ class MLModel(db.Model):
     train_samples = db.Column(db.Integer, default=0)
     test_samples = db.Column(db.Integer, default=0)
     split_ratio = db.Column(db.String(20), default="80/20")
+    split_method = db.Column(db.String(120), nullable=True)
+    dataset_id = db.Column(db.String(80), nullable=True)
     activated_at = db.Column(db.DateTime, nullable=True)
     training_duration = db.Column(db.Float, nullable=True)
 

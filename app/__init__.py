@@ -94,6 +94,8 @@ def _ensure_schema(app):
         "train_samples": ("INTEGER DEFAULT 0", "INTEGER DEFAULT 0"),
         "test_samples": ("INTEGER DEFAULT 0", "INTEGER DEFAULT 0"),
         "split_ratio": ("VARCHAR(20) DEFAULT '80/20'", "VARCHAR(20) DEFAULT '80/20'"),
+        "split_method": ("VARCHAR(120)", "VARCHAR(120)"),
+        "dataset_id": ("VARCHAR(80)", "VARCHAR(80)"),
         "activated_at": ("DATETIME", "TIMESTAMP"),
         "training_duration": ("FLOAT", "FLOAT"),
     }

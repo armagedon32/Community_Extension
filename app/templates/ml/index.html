@@ -279,6 +279,16 @@
             </div>
         </div>
 
+        <div class="alert alert-light border small mb-3">
+            <i class="bi bi-shield-check text-success"></i>
+            <strong>Training reproducibility:</strong> before the split, each document's ground-truth label is
+            validated against the registered category/domain lists and <strong>exact-duplicate documents are removed</strong>,
+            so no document can appear in both the training and the testing set. The stratified 80/20 split
+            (random_state=42) preserves every category's distribution in both splits. Each model run records its
+            dataset identifier, split method, validation summary, and per-class train/test counts — open
+            <strong>Full Evaluation</strong> to inspect them.
+        </div>
+
         <div class="row g-3">
             <div class="col-lg-6">
                 <h6 class="fw-bold small text-uppercase text-muted">Ground-Truth Labels — Document Type</h6>
@@ -444,6 +454,8 @@
                 <div>Version: <strong>{{ latest.model_version or '—' }}</strong></div>
                 <div>Classes: <strong>{{ latest.classes }}</strong></div>
                 <div>Dataset: <strong>{{ latest.dataset_size or latest.samples }}</strong> docs ({{ latest.train_samples or '—' }} train / {{ latest.test_samples or '—' }} test, {{ latest.split_ratio or '80/20' }})</div>
+                <div>Split: <strong>{{ latest.split_method or 'Stratified 80/20 by category (random_state=42)' }}</strong></div>
+                <div>Dataset ID: <strong class="text-primary">{{ latest.dataset_id or '—' }}</strong></div>
                 <div>Trained: <strong>{{ latest.created_at.strftime('%b %d, %Y %H:%M') }}</strong></div>
                 {% if latest.training_duration %}<div>Training time: <strong>{{ latest.training_duration }}s</strong></div>{% endif %}
             </div>
@@ -492,6 +504,8 @@
                 <div>Version: <strong>{{ latest_domain.model_version or '—' }}</strong></div>
                 <div>Classes: <strong>{{ latest_domain.classes }}</strong></div>
                 <div>Dataset: <strong>{{ latest_domain.dataset_size or latest_domain.samples }}</strong> docs ({{ latest_domain.train_samples or '—' }} train / {{ latest_domain.test_samples or '—' }} test, {{ latest_domain.split_ratio or '80/20' }})</div>
+                <div>Split: <strong>{{ latest_domain.split_method or 'Stratified 80/20 by category (random_state=42)' }}</strong></div>
+                <div>Dataset ID: <strong class="text-primary">{{ latest_domain.dataset_id or '—' }}</strong></div>
                 <div>Trained: <strong>{{ latest_domain.created_at.strftime('%b %d, %Y %H:%M') }}</strong></div>
                 {% if latest_domain.training_duration %}<div>Training time: <strong>{{ latest_domain.training_duration }}s</strong></div>{% endif %}
             </div>
@@ -539,6 +553,7 @@
                             <th>Precision</th>
                             <th>Recall</th>
                             <th>F1</th>
+                            <th>Split / Dataset ID</th>
                             <th>Status</th>
                             <th>Date</th>
                             <th class="text-end">Action</th>
@@ -553,6 +568,10 @@
                             <td>{{ '%.1f'|format((m.precision or 0) * 100) }}%</td>
                             <td>{{ '%.1f'|format((m.recall or 0) * 100) }}%</td>
                             <td>{{ '%.1f'|format((m.f1 or 0) * 100) }}%</td>
+                            <td class="small">
+                                <span title="{{ m.split_method or 'Stratified 80/20 by category (random_state=42)' }}">{{ m.split_ratio or '80/20' }}</span>
+                                {% if m.dataset_id %}<div class="text-muted" style="font-size:.72rem;">{{ m.dataset_id }}</div>{% else %}<div class="text-muted" style="font-size:.72rem;">—</div>{% endif %}
+                            </td>
                             <td>
                                 {% if m.status == 'Active' %}<span class="badge text-bg-success">Active</span>
                                 {% elif m.status == 'Trained' %}<span class="badge text-bg-warning">Trained</span>
@@ -574,7 +593,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="9" class="text-center text-muted">No model runs recorded.</td></tr>
+                        <tr><td colspan="10" class="text-center text-muted">No model runs recorded.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

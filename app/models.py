@@ -256,6 +256,36 @@ class AccomplishmentReport(db.Model):
         return f"<AccomplishmentReport {self.title}>"
 
 
+class ProjectTarget(db.Model):
+    """Expected deliverables and measurable targets of an approved proposal.
+
+    Recorded per evaluation indicator (see ``app.ml.outcomes``) so the
+    outcome rating compares the actual project results against the targets
+    stated in the specific approved proposal, instead of using generic
+    benchmarks alone.
+    """
+    __tablename__ = "project_targets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    project_id = db.Column(db.Integer, db.ForeignKey("projects.id"), nullable=False)
+    indicator_key = db.Column(db.String(50), nullable=False)
+    indicator_name = db.Column(db.String(120), nullable=False)
+    target_value = db.Column(db.Float, nullable=False, default=0)
+    unit = db.Column(db.String(20), nullable=False, default="count")
+    basis = db.Column(db.Text, nullable=True)  # expected deliverable/outcome from the approved proposal
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    project = db.relationship("Project", backref="targets")
+
+    __table_args__ = (
+        db.UniqueConstraint("project_id", "indicator_key", name="uq_project_target_indicator"),
+    )
+
+    def __repr__(self):
+        return f"<ProjectTarget {self.project_id}:{self.indicator_key}={self.target_value}>"
+
+
 class Document(db.Model):
     """Extension document to be automatically classified by the NLP + Naive Bayes engine."""
     __tablename__ = "documents"

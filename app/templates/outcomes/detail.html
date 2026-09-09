@@ -8,7 +8,12 @@
         <h4 class="fw-bold mb-0 mt-1">Outcome Assessment Basis</h4>
         <span class="text-muted small">{{ evaluation.project.title }}</span>
     </div>
-    <span class="badge text-bg-light border text-dark">{{ evaluation.computed_at.strftime('%b %d, %Y %H:%M') }}</span>
+    <div class="d-flex flex-column align-items-end gap-1">
+        <span class="badge text-bg-light border text-dark">{{ evaluation.computed_at.strftime('%b %d, %Y %H:%M') }}</span>
+        <a href="{{ url_for('outcomes.targets', project_id=evaluation.project.id) }}" class="btn btn-sm btn-primary">
+            <i class="bi bi-bullseye"></i> Record Expected Deliverables &amp; Targets
+        </a>
+    </div>
 </div>
 
 {% if not evaluation.approved %}
@@ -31,6 +36,7 @@
                 {% else %}<span class="badge text-bg-secondary">{{ p.status }}</span>{% endif %}
                 <span class="badge text-bg-light border text-dark">Budget: ₱{{ "{:,.0f}".format(p.budget or 0) }}</span>
                 <span class="badge text-bg-light border text-dark">Progress: {{ p.progress }}%</span>
+                <span class="badge text-bg-light border text-dark">Targets: {{ evaluation.targets_count }}/{{ evaluation.targets_total }} recorded</span>
             </div>
         </div>
         <div class="text-center px-3">
@@ -79,8 +85,10 @@
                 <h6 class="fw-bold mb-0">Overall Score Computation</h6>
             </div>
             <p class="small text-muted mb-3">
-                {{ evaluation.indicator_count }} applicable indicator(s), equally weighted:
-                score = (sum of indicator scores) / {{ evaluation.indicator_count }}.
+                {{ evaluation.indicator_count }} applicable indicator(s), equally weighted, comparing actual
+                results against the recorded targets of this proposal:
+                score = (sum of indicator scores) / {{ evaluation.indicator_count }}. A score of 100 means the
+                target was fully met or exceeded.
             </p>
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="small text-muted">Average score</div>
@@ -108,50 +116,54 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div class="d-flex align-items-center gap-2">
             <i class="bi bi-rulers text-primary fs-5"></i>
-            <h6 class="fw-bold mb-0">Measurable Indicators &amp; Classification Basis</h6>
+            <h6 class="fw-bold mb-0">Indicators: Expected Target vs. Actual Result</h6>
         </div>
-        <span class="small text-muted">Aligned with the deliverables and outcomes of the approved proposal</span>
+        <span class="small text-muted">Targets are aligned with the deliverables and outcomes of this approved proposal</span>
     </div>
     <div class="table-responsive">
         <table class="table table-hover align-middle">
             <thead>
                 <tr>
-                    <th style="min-width: 180px;">Indicator</th>
-                    <th>What It Measures</th>
-                    <th>Data Source</th>
-                    <th>Observed Value</th>
-                    <th>Score</th>
+                    <th style="min-width: 200px;">Applicable Indicator</th>
+                    <th>Expected Target</th>
+                    <th>Actual Result</th>
+                    <th>Attainment</th>
                     <th>Rating</th>
-                    <th>Classification Basis</th>
+                    <th>Classification Criterion &amp; Basis</th>
                 </tr>
             </thead>
             <tbody>
                 {% for ind in evaluation.indicators %}
                 <tr>
-                    <td class="fw-semibold">
-                        {{ ind.name }}
-                        {% if not ind.applicable %}
-                        <span class="badge text-bg-light border text-muted ms-1">N/A</span>
+                    <td>
+                        <div class="fw-semibold">
+                            {{ ind.name }}
+                            {% if not ind.applicable %}<span class="badge text-bg-light border text-muted ms-1">N/A</span>{% endif %}
+                            {% if ind.has_target %}<span class="badge text-bg-info text-white ms-1" title="Recorded from the approved proposal">target recorded</span>{% endif %}
+                        </div>
+                        <div class="small text-muted mt-1">{{ ind.description }}</div>
+                        <div class="small text-muted"><i class="bi bi-database"></i> {{ ind.dataset }}</div>
+                    </td>
+                    <td class="small">
+                        <div class="fw-semibold">{{ ind.target_display }}</div>
+                        {% if ind.target_basis %}
+                        <div class="text-muted">{{ ind.target_basis }}</div>
+                        {% else %}
+                        <div class="text-muted fst-italic">Default benchmark (no target recorded for this proposal)</div>
                         {% endif %}
                     </td>
-                    <td class="small text-muted">{{ ind.description }}</td>
-                    <td class="small">{{ ind.dataset }}</td>
-                    <td class="small">{{ ind.display|safe }}</td>
+                    <td class="small fw-semibold">{{ ind.display }}</td>
                     <td style="min-width: 120px;">
                         <div class="d-flex align-items-center gap-2">
                             <div class="progress flex-grow-1" style="height: 8px;">
-                                <div class="progress-bar bg-{{ level_class[ind.level] }}" style="width: {{ ind.score }}%"></div>
+                                <div class="progress-bar bg-{{ ind.level_class }}" style="width: {{ ind.score }}%"></div>
                             </div>
-                            <small>{{ ind.score }}</small>
+                            <small>{{ ind.attainment_display }}</small>
                         </div>
+                        <div class="small text-muted text-end">{{ ind.score }}/100</div>
                     </td>
-                    <td><span class="badge text-bg-{{ level_class[ind.level] }}">{{ ind.level }}</span></td>
-                    <td class="small text-muted">
-                        {{ ind.basis }}
-                        {% for c in ind.criteria if c.level == ind.level %}
-                        <span class="badge text-bg-light border text-dark d-inline-block mt-1">{{ c.level }}: {{ c.condition }}</span>
-                        {% endfor %}
-                    </td>
+                    <td><span class="badge text-bg-{{ ind.level_class }}">{{ ind.level }}</span></td>
+                    <td class="small text-muted">{{ ind.basis }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -166,9 +178,10 @@
     </div>
     <p class="small text-muted mb-0">
         This AI-generated outcome assessment is computed live from the data recorded in CELMIS on
-        {{ evaluation.computed_at.strftime('%b %d, %Y at %H:%M') }}. All indicators, thresholds, and the
-        basis for the <strong>{{ evaluation.rating or 'not yet assigned' }}</strong> rating are displayed above
-        and can be re-verified at any time by opening this page again.
+        {{ evaluation.computed_at.strftime('%b %d, %Y at %H:%M') }}. The expected targets recorded for this
+        approved proposal, the actual results, and the classification criteria used for the
+        <strong>{{ evaluation.rating or 'not yet assigned' }}</strong> rating are displayed above and can be
+        re-verified at any time by opening this page again.
     </p>
 </div>
 {% endblock %}

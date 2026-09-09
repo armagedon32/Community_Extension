@@ -17,6 +17,7 @@ from app.models import (
     MOU,
     Partner,
     Project,
+    ProjectTarget,
     SurveyQuestion,
     SurveySubmission,
     User,
@@ -249,6 +250,39 @@ def run_seed(reset=True, app=None):
                 submitted_by=users[ri % len(users)].full_name,
             )
             db.session.add(rep)
+        db.session.commit()
+    
+        # Expected deliverables and measurable targets from approved proposals
+        # (projects[1] = Community Health Caravan, projects[5] = Tree Planting Initiative)
+        from app.ml.outcomes import INDICATOR_DEFS
+        target_seed = [
+            (1, "deliverable_completion", 85.0,
+             "Complete 85% of the health deliverables by the end of the program year."),
+            (1, "beneficiary_reach", 150.0,
+             "Serve at least 150 residents through the caravan and follow-up services."),
+            (1, "deliverable_documentation", 1.0,
+             "Submit one accomplishment report per caravan event."),
+            (1, "activity_implementation", 90.0,
+             "Implement at least 90% of the scheduled caravan activities."),
+            (1, "budget_utilization", 75.0,
+             "Utilize 75% of the approved program budget for service delivery."),
+            (5, "deliverable_completion", 100.0,
+             "Complete all tree planting deliverables and document them."),
+            (5, "beneficiary_reach", 180.0,
+             "Reach 180 participants in the planting and conservation drive."),
+            (5, "activity_implementation", 100.0,
+             "Implement all planned planting, seminar, and monitoring activities."),
+        ]
+        for pidx, key, value, basis in target_seed:
+            proj = projects[pidx]
+            db.session.add(ProjectTarget(
+                project_id=proj.id,
+                indicator_key=key,
+                indicator_name=INDICATOR_DEFS[key]["name"],
+                target_value=value,
+                unit=INDICATOR_DEFS[key]["unit"],
+                basis=basis,
+            ))
         db.session.commit()
     
         # Labeled training documents for the Naive Bayes model

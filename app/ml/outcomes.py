@@ -1,20 +1,26 @@
-"""AI-driven Outcome-Based Evaluation (transparent, indicator-based).
+"""AI-driven Outcome-Based Evaluation (transparent, proposal-aligned).
 
 For every approved extension project (status ``Ongoing`` or ``Completed``),
 this module rates the expected outcomes as **Low**, **Medium**, or **High**
-by scoring measurable indicators derived from the deliverables and outcomes
-stated in the approved proposal. Every indicator exposes:
+by comparing the actual project results against the **expected deliverables
+and measurable targets recorded for that specific approved proposal**.
 
-- the **data source** it reads from (which CELMIS tables/fields feed it),
-- the exact **thresholds** used to assign each rating level,
-- the observed **value** and the **basis** used for the classification.
+Every indicator exposes:
 
-The overall rating is the equal-weighted average of the applicable indicator
-scores (on a 0-100 scale), mapped with clearly defined breakpoints::
+- the **expected target** recorded from the approved proposal (with the
+  deliverable/outcome it represents); when none is recorded, a documented
+  default benchmark is used instead,
+- the **actual result** read from CELMIS data,
+- the **attainment** (actual / target), and
+- the **classification criterion** applied to assign Low / Medium / High.
 
-    Low    -> average score <  50
-    Medium -> 50 <= average score <  80
-    High   -> average score >= 80
+Attainment is mapped to a 0-100 score (100 = fully met or exceeded the
+target). The overall rating is the equal-weighted average of the applicable
+indicator scores::
+
+    Low    -> average score <  50  (achieved < 50% of targets on average)
+    Medium -> 50 <= average <  80  (achieved 50% - 79% of targets)
+    High   -> average >= 80        (achieved >= 80% of targets)
 
 Everything is computed live from the recorded data so the assessment stays
 measurable, transparent, and aligned with the approved proposal.
@@ -38,7 +44,74 @@ LEVEL_CLASS = {
     "High": "success",
 }
 
-# Indicators that are read when the evaluated project has no approved budget.
+# Indicators used by the evaluation. ``default_target`` and
+# ``default_basis`` apply only when the approved proposal has no recorded
+# target for the indicator.
+INDICATOR_DEFS = {
+    "deliverable_completion": {
+        "name": "Deliverable Completion",
+        "description": (
+            "Progress toward the expected deliverables stated in the approved "
+            "proposal, as encoded by the project leader."
+        ),
+        "dataset": "projects.progress (0-100)",
+        "unit": "percent",
+        "unit_label": "%",
+        "default_target": 100.0,
+        "default_basis": "Complete all expected deliverables stated in the approved proposal.",
+    },
+    "deliverable_documentation": {
+        "name": "Deliverable Documentation",
+        "description": (
+            "Number of accomplishment reports submitted as documented evidence "
+            "that the proposal's expected deliverables and outcomes were achieved."
+        ),
+        "dataset": "accomplishment_reports (count by project)",
+        "unit": "count",
+        "unit_label": "report(s)",
+        "default_target": 2.0,
+        "default_basis": "Submit at least one documented accomplishment report per expected deliverable.",
+    },
+    "activity_implementation": {
+        "name": "Activity Implementation",
+        "description": (
+            "Share of planned activities actually implemented (Completed or "
+            "Ongoing) out of all scheduled activities for the project."
+        ),
+        "dataset": "activities (status by project)",
+        "unit": "percent",
+        "unit_label": "%",
+        "default_target": 100.0,
+        "default_basis": "Implement all planned activities described in the approved proposal.",
+    },
+    "beneficiary_reach": {
+        "name": "Beneficiary Reach",
+        "description": (
+            "Number of beneficiaries actually served, as documented in the "
+            "accomplishment reports for the project."
+        ),
+        "dataset": "accomplishment_reports.beneficiaries_served (sum by project)",
+        "unit": "count",
+        "unit_label": "beneficiaries",
+        "default_target": 50.0,
+        "default_basis": "Reach the target number of beneficiaries set in the approved proposal.",
+    },
+    "budget_utilization": {
+        "name": "Budget Utilization",
+        "description": (
+            "Approved funds utilized (Expense and Allocation) relative to the "
+            "budget stated in the approved proposal."
+        ),
+        "dataset": "financial_transactions (Approved) / projects.budget",
+        "unit": "percent",
+        "unit_label": "%",
+        "default_target": 80.0,
+        "default_basis": "Utilize at least 80% of the approved proposal budget.",
+    },
+}
+
+INDICATOR_KEYS = list(INDICATOR_DEFS.keys())
+
 _SPENT_TYPES = ("Expense", "Allocation")
 
 
@@ -57,29 +130,29 @@ def _level(score):
     return "Low"
 
 
-def _score_basis(score, level, condition):
-    """Human-readable basis text for one indicator classification."""
-    return (
-        f"Observed score {round(score, 1)}/100. "
-        f"Meets the {level.upper()} threshold ({condition})."
-    )
+def _display_value(value, unit):
+    if unit == "amount":
+        return f"₱{value:,.0f}"
+    if unit == "percent":
+        return f"{value:g}%"
+    return f"{value:g}"
 
 
-def _indicators(project):
-    """Compute the measurable indicators for one project.
+def _target_display(target):
+    if target is None:
+        return None
+    return _display_value(target.target_value, target.unit or "count")
 
-    Each indicator is returned with its definition, data source, the
-    thresholds applied for every rating level, the observed value, the
-    0-100 score, the assigned level, and the basis of the classification.
-    """
+
+def _metrics(project):
+    """Return the raw measured value for every indicator of one project."""
     progress = max(0, min(int(project.progress or 0), 100))
     reports = list(project.accomplishments)
     activities = list(project.activities)
 
     total_activities = len(activities)
-    implemented = sum(
-        1 for a in activities if a.status in ("Ongoing", "Completed")
-    )
+    implemented = sum(1 for a in activities if a.status in ("Ongoing", "Completed"))
+    implemented_pct = (implemented / total_activities) * 100 if total_activities else 0.0
 
     served = sum(_num(ac.beneficiaries_served) for ac in reports)
 
@@ -90,186 +163,138 @@ def _indicators(project):
     ).all():
         if t.transaction_type in _SPENT_TYPES:
             spent += _num(t.amount)
+    util_pct = (spent / budget) * 100 if budget > 0 else None
 
-    ind = []
-
-    # ---- 1. Deliverable Completion -------------------------------------
-    ind.append({
-        "key": "deliverable_completion",
-        "name": "Deliverable Completion",
-        "description": (
-            "Progress toward the expected deliverables stated in the approved "
-            "proposal, as encoded by the project leader."
-        ),
-        "dataset": "projects.progress (0-100)",
-        "criteria": [
-            {"level": "Low", "condition": "progress < 50%"},
-            {"level": "Medium", "condition": "progress 50% - 79%"},
-            {"level": "High", "condition": "progress >= 80%"},
-        ],
-        "value": progress,
-        "display": f"{progress}%",
-        "score": progress,
-        "level": _level(progress),
-        "basis": _score_basis(progress, _level(progress),
-                              _display_condition(_level(progress),
-                                                 "progress < 50%",
-                                                 "progress 50% - 79%",
-                                                 "progress >= 80%")),
-        "applicable": True,
-    })
-
-    # ---- 2. Deliverable Documentation -----------------------------------
-    n_docs = len(reports)
-    score_docs = min(n_docs / 2.0, 1.0) * 100
-    ind.append({
-        "key": "deliverable_documentation",
-        "name": "Deliverable Documentation",
-        "description": (
-            "Number of accomplishment reports submitted as documented evidence "
-            "that the proposal's expected deliverables and outcomes were achieved."
-        ),
-        "dataset": "accomplishment_reports (count by project)",
-        "criteria": [
-            {"level": "Low", "condition": "0 reports"},
-            {"level": "Medium", "condition": "1 report"},
-            {"level": "High", "condition": ">= 2 reports"},
-        ],
-        "value": n_docs,
-        "display": f"{n_docs} report(s)",
-        "score": round(score_docs, 1),
-        "level": _level(score_docs),
-        "basis": _score_basis(score_docs, _level(score_docs),
-                              _display_condition(_level(score_docs),
-                                                 "0 reports",
-                                                 "1 report",
-                                                 ">= 2 reports")),
-        "applicable": True,
-    })
-
-    # ---- 3. Activity Implementation -------------------------------------
-    if total_activities == 0:
-        score_act = 0.0
-        impl_display = "None scheduled"
-        impl_basis = (
-            "No planned activities are recorded for this project, so "
-            "implementation cannot be evidenced yet."
-        )
-        impl_level = "Low"
-    else:
-        ratio = implemented / total_activities
-        score_act = ratio * 100
-        impl_display = f"{implemented} / {total_activities} activities ({ratio * 100:.0f}%)"
-        impl_level = _level(score_act)
-        impl_basis = _score_basis(score_act, impl_level,
-                                  _display_condition(impl_level,
-                                                     "less than 50% implemented",
-                                                     "50% - 79% implemented",
-                                                     ">= 80% implemented"))
-    ind.append({
-        "key": "activity_implementation",
-        "name": "Activity Implementation",
-        "description": (
-            "Share of planned activities actually implemented (Completed or "
-            "Ongoing) out of all scheduled activities for the project."
-        ),
-        "dataset": "activities (status by project)",
-        "criteria": [
-            {"level": "Low", "condition": "< 50% of activities implemented"},
-            {"level": "Medium", "condition": "50% - 79% of activities implemented"},
-            {"level": "High", "condition": ">= 80% of activities implemented"},
-        ],
-        "value": None if total_activities == 0 else round(ratio * 100, 1),
-        "display": impl_display,
-        "score": round(score_act, 1),
-        "level": impl_level,
-        "basis": impl_basis,
-        "applicable": True,
-    })
-
-    # ---- 4. Beneficiary Reach -------------------------------------------
-    score_reach = min(served / 50.0, 1.0) * 100
-    ind.append({
-        "key": "beneficiary_reach",
-        "name": "Beneficiary Reach",
-        "description": (
-            "Number of beneficiaries actually served, as documented in the "
-            "accomplishment reports for the project."
-        ),
-        "dataset": "accomplishment_reports.beneficiaries_served (sum by project)",
-        "criteria": [
-            {"level": "Low", "condition": "0 beneficiaries served"},
-            {"level": "Medium", "condition": "1 - 49 beneficiaries served"},
-            {"level": "High", "condition": ">= 50 beneficiaries served"},
-        ],
-        "value": served,
-        "display": f"{served:,.0f} served",
-        "score": round(score_reach, 1),
-        "level": _level(score_reach),
-        "basis": _score_basis(score_reach, _level(score_reach),
-                              _display_condition(_level(score_reach),
-                                                 "0 beneficiaries served",
-                                                 "1 - 49 beneficiaries served",
-                                                 ">= 50 beneficiaries served")),
-        "applicable": True,
-    })
-
-    # ---- 5. Budget Utilization ------------------------------------------
-    budget_applicable = budget > 0
-    if budget_applicable:
-        util = spent / budget
-        score_budget = min(util / 0.8, 1.0) * 100
-        util_pct = min(util * 100, 999)
-        budget_display = (
-            f"{util_pct:.1f}% (₱{spent:,.0f} / ₱{budget:,.0f})"
-        )
-        budget_basis = _score_basis(score_budget, _level(score_budget),
-                                    _display_condition(_level(score_budget),
-                                                       "less than 50% of budget used",
-                                                       "50% - 79% of budget used",
-                                                       ">= 80% of budget used"))
-    else:
-        score_budget = 0.0
-        budget_display = "No approved budget on record"
-        budget_basis = (
-            "The approved proposal has no budget amount, so utilization cannot "
-            "be measured; this indicator is excluded from the overall score."
-        )
-
-    ind.append({
-        "key": "budget_utilization",
-        "name": "Budget Utilization",
-        "description": (
-            "Approved funds utilized (Expense and Allocation) relative to the "
-            "budget stated in the approved proposal."
-        ),
-        "dataset": "financial_transactions (Approved) / projects.budget",
-        "criteria": [
-            {"level": "Low", "condition": "< 50% of budget utilized"},
-            {"level": "Medium", "condition": "50% - 79% of budget utilized"},
-            {"level": "High", "condition": ">= 80% of budget utilized"},
-        ],
-        "value": None if not budget_applicable else round(util * 100, 1),
-        "display": budget_display,
-        "score": round(score_budget, 1),
-        "level": _level(score_budget) if budget_applicable else "Low",
-        "basis": budget_basis,
-        "applicable": budget_applicable,
-    })
-
-    return ind
+    return {
+        "deliverable_completion": progress,
+        "deliverable_documentation": float(len(reports)),
+        "activity_implementation": implemented_pct if total_activities else 0.0,
+        "beneficiary_reach": served,
+        "budget_utilization": util_pct,
+    }
 
 
-def _display_condition(level, low, medium, high):
-    return {"Low": low, "Medium": medium, "High": high}[level]
+def _actual_display(key, measure, project):
+    if key == "deliverable_completion":
+        return f"{measure:g}%"
+    if key == "deliverable_documentation":
+        return f"{measure:g} report(s)"
+    if key == "activity_implementation":
+        activities = list(project.activities)
+        if not activities:
+            return "None scheduled"
+        implemented = sum(1 for a in activities if a.status in ("Ongoing", "Completed"))
+        return f"{implemented} / {len(activities)} activities ({measure:.0f}%)"
+    if key == "beneficiary_reach":
+        return f"{measure:,.0f} served"
+    if key == "budget_utilization":
+        budget = _num(project.budget)
+        if budget <= 0:
+            return "No approved budget on record"
+        spent = 0.0
+        for t in FinancialTransaction.query.filter_by(
+            project_id=project.id, status="Approved"
+        ).all():
+            if t.transaction_type in _SPENT_TYPES:
+                spent += _num(t.amount)
+        return f"{measure:.1f}% (₱{spent:,.0f} / ₱{budget:,.0f})"
+    return str(measure)
+
+
+def _criterion(level, target_display, has_target):
+    middle = "the target of " if has_target else "the default benchmark of "
+    return {
+        "Low": f"actual result below 50% of {middle}{target_display}",
+        "Medium": f"actual result 50% - 79% of {middle}{target_display}",
+        "High": f"actual result at least 80% of {middle}{target_display}",
+    }[level]
+
+
+def _indicators(project):
+    """Compute the proposal-aligned indicators for one project."""
+    metrics = _metrics(project)
+    targets = {t.indicator_key: t for t in project.targets}
+
+    indicators = []
+    for key in INDICATOR_KEYS:
+        definition = INDICATOR_DEFS[key]
+        measure = metrics[key]
+
+        # Budget utilization is not measurable without an approved budget.
+        applicable = True
+        if key == "budget_utilization" and measure is None:
+            applicable = False
+
+        target = targets.get(key)
+        has_target = target is not None and target.target_value > 0
+        target_value = (float(target.target_value) if has_target else
+                        definition["default_target"])
+        target_display = (target.target_value if has_target else
+                          definition["default_target"])
+        target_label = _display_value(target_display, definition["unit"])
+        target_basis = (target.basis or definition["default_basis"]) if has_target else definition["default_basis"]
+
+        if not applicable:
+            score = 0.0
+            attainment = None
+            attainment_display = "—"
+            level = "Low"
+            basis = (
+                f"The approved proposal has no budget amount, so utilization cannot "
+                f"be measured; this indicator is excluded from the overall score."
+            )
+        else:
+            if target_value > 0 and measure is not None:
+                attainment = measure / target_value
+            else:
+                attainment = 0.0
+            attainment_display = f"{attainment * 100:.0f}%"
+            score = round(min(attainment, 1.0) * 100, 1)
+            level = _level(score)
+            criterion_text = _criterion(level, target_label, has_target)
+            if has_target:
+                basis = (
+                    f"Expected from proposal: {target_basis} "
+                    f"(target: {target_label}). Actual: {_actual_display(key, measure, project)}. "
+                    f"Attainment {attainment_display} [{criterion_text}]."
+                )
+            else:
+                basis = (
+                    f"No target recorded for this proposal, so the default benchmark "
+                    f"({target_label}) was used. Actual: {_actual_display(key, measure, project)}. "
+                    f"Attainment {attainment_display} [{criterion_text}]."
+                )
+
+        indicators.append({
+            "key": key,
+            "name": definition["name"],
+            "description": definition["description"],
+            "dataset": definition["dataset"],
+            "has_target": has_target,
+            "target_value": target_display,
+            "target_display": target_label,
+            "target_basis": target_basis if has_target else None,
+            "criteria_label": target_label,
+            "value": measure,
+            "display": _actual_display(key, measure, project) if applicable else "—",
+            "attainment": attainment,
+            "attainment_display": attainment_display,
+            "score": score,
+            "level": level,
+            "level_class": LEVEL_CLASS[level],
+            "basis": basis,
+            "applicable": applicable,
+        })
+
+    return indicators
 
 
 def evaluate_project(project):
     """Compute the full outcome evaluation for a single project.
 
     The result carries the rating, the equal-weighted overall score, the
-    per-indicator breakdown, the dataset consulted, and the proposal it is
-    aligned with, so the classification is fully auditable.
+    per-indicator breakdown (expected target, actual result, attainment,
+    criterion, and basis), and the dataset consulted.
     """
     indicators = _indicators(project)
     applicable = [i for i in indicators if i["applicable"]]
@@ -285,7 +310,8 @@ def evaluate_project(project):
     dataset = [
         {"source": "projects.progress", "purpose": "Deliverable completion", "records": 1},
         {"source": "activities",
-         "purpose": "Planned vs implemented activities", "records": len(project.activities)},
+         "purpose": "Planned vs implemented activities",
+         "records": len(project.activities)},
         {"source": "accomplishment_reports",
          "purpose": "Deliverable evidence and beneficiaries served",
          "records": len(project.accomplishments)},
@@ -297,6 +323,16 @@ def evaluate_project(project):
         {"source": "mous", "purpose": "Partnership intent alignment", "records": len(project.mous)},
     ]
 
+    targets = [
+        {
+            "key": t.indicator_key,
+            "name": t.indicator_name,
+            "target_display": _display_value(t.target_value, t.unit or "count"),
+            "basis": t.basis,
+        }
+        for t in sorted(project.targets, key=lambda x: x.indicator_key)
+    ]
+
     return {
         "project": project,
         "approved": project.status in ("Ongoing", "Completed"),
@@ -306,6 +342,9 @@ def evaluate_project(project):
         "indicator_count": len(applicable),
         "indicators": indicators,
         "dataset": dataset,
+        "targets": targets,
+        "targets_count": len(targets),
+        "targets_total": len(INDICATOR_KEYS),
         "breakpoints": LEVEL_BREAKPOINTS,
         "computed_at": datetime.utcnow(),
     }

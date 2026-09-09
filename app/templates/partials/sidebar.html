@@ -53,6 +53,9 @@
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('outcomes.') %}active{% endif %}" href="{{ url_for('outcomes.index') }}">
             <i class="bi bi-clipboard2-data"></i> Outcome-Based Evaluation
         </a>
+        <a class="nav-link {% if request.endpoint and request.endpoint.startswith('efficiency.') %}active{% endif %}" href="{{ url_for('efficiency.index') }}">
+            <i class="bi bi-stopwatch"></i> Efficiency Comparison
+        </a>
         <div class="nav-section">Finance</div>
         <a class="nav-link {% if request.endpoint and request.endpoint.startswith('finance.') %}active{% endif %}" href="{{ url_for('finance.dashboard') }}">
             <i class="bi bi-wallet2"></i> Contribution Funds

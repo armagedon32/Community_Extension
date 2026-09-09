@@ -12,6 +12,10 @@ from app.models import (
     DataCollectionSurvey,
     Document,
     Donation,
+    EfficiencyIndicator,
+    EfficiencyMeasurement,
+    EfficiencyPerception,
+    EfficiencyPerceptionResponse,
     FinancialTransaction,
     MOA,
     MOU,
@@ -557,7 +561,80 @@ def run_seed(reset=True, app=None):
                 answers=json.dumps(mapped),
             ))
         db.session.commit()
-    
+
+        # Efficiency comparison: timed trials for manual procedure vs developed system.
+        # Each indicator holds 3 recorded trials per method (observation data).
+        efficiency_seed = [
+            ("Registration / Encoding of New Partner Organization",
+             "Time to register and encode a new partner organization record on file/manual logbook vs the system.",
+             [(14, 16, 15), (2.5, 3.0, 2.8)]),
+            ("Retrieval of Project Records",
+             "Time to locate and pull up a specific project record from physical files vs the system search.",
+             [(24, 26, 22), (0.4, 0.5, 0.6)]),
+            ("Generation of Monthly Accomplishment Report",
+             "Time to consolidate data and produce the monthly accomplishment report.",
+             [(58, 63, 62), (11, 12, 13)]),
+            ("Preparation of MOA / MOU Document",
+             "Time to draft, revise and finalize a partnership agreement document.",
+             [(42, 48, 45), (8, 9, 8.5)]),
+            ("Approval of Financial Transaction",
+             "Time to route, record and approve a contribution-fund transaction.",
+             [(130, 140, 120), (6, 7, 8)]),
+        ]
+        for sort_i, (ind_name, ind_desc, trials) in enumerate(efficiency_seed):
+            ind = EfficiencyIndicator(
+                name=ind_name, description=ind_desc, unit="seconds", sort_order=sort_i,
+            )
+            db.session.add(ind)
+            db.session.flush()
+            manual_trials, system_trials = trials
+            for mi, t in enumerate(manual_trials):
+                db.session.add(EfficiencyMeasurement(
+                    indicator_id=ind.id, method="Manual",
+                    duration_seconds=t * 60,
+                    measured_on=datetime.date.today() - datetime.timedelta(days=(10 - mi)),
+                    measured_by="Research Team",
+                    notes="Timed observation of the existing manual procedure.",
+                ))
+            for si, t in enumerate(system_trials):
+                db.session.add(EfficiencyMeasurement(
+                    indicator_id=ind.id, method="System",
+                    duration_seconds=t * 60,
+                    measured_on=datetime.date.today() - datetime.timedelta(days=(5 - si)),
+                    measured_by="Research Team",
+                    notes="Timed observation within the developed system (CELMIS).",
+                ))
+        db.session.commit()
+
+        # ISO/IEC 25010 perceived performance-efficiency (user-perception data).
+        # Kept separate from the objective timed trials; perception alone is not
+        # used as the basis for turnaround-time claims.
+        perception_seed = [
+            ("The system completes the recording and processing of extension records noticeably faster than the manual procedure.",),
+            ("Records that I need are retrieved quickly whenever I request them.",),
+            ("Reports and documents are generated with minimal waiting time.",),
+            ("Overall, the developed system performs more efficiently than the existing manual process.",),
+        ]
+        perception_ratings = [
+            [4, 5, 4, 5, 4, 4, 5, 4],
+            [4, 4, 5, 4, 5, 3, 4, 5],
+            [5, 4, 4, 5, 4, 5, 4, 4],
+            [4, 5, 5, 4, 4, 5, 5, 4],
+        ]
+        for pi, (statement,) in enumerate(perception_seed):
+            p = EfficiencyPerception(
+                statement=statement,
+                dimension="ISO/IEC 25010 Performance Efficiency (Perceived)",
+            )
+            db.session.add(p)
+            db.session.flush()
+            for ri, rating in enumerate(perception_ratings[pi]):
+                db.session.add(EfficiencyPerceptionResponse(
+                    perception_id=p.id, rating=rating, respondent=None,
+                    responded_on=datetime.date.today() - datetime.timedelta(days=(8 - ri)),
+                ))
+        db.session.commit()
+
         print("Seed data created successfully!")
         print("Default login: admin / password")
 

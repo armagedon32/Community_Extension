@@ -1,0 +1,428 @@
+{% extends 'base.html' %}
+{% block title %}Efficiency Comparison - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">Efficiency Comparison</h4>
+        <span class="text-muted small">Measured processing, retrieval and report-generation times: existing manual procedure vs developed system</span>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <span class="badge text-bg-light border text-dark no-print">{{ computed_at.strftime('%b %d, %Y') }}</span>
+        <button class="btn btn-outline-primary no-print" onclick="window.print()"><i class="bi bi-printer"></i> Print / Save PDF</button>
+    </div>
+</div>
+
+<!-- ================= OBJECTIVE TIMED RESULTS ================= -->
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-stopwatch text-primary fs-5"></i>
+        <h6 class="fw-bold mb-0">Objective Comparison (Timed Trials)</h6>
+    </div>
+    <p class="small text-muted mb-0">
+        The turnaround time of each indicator is actually <strong>measured</strong> (timed trials) for both the
+        existing manual procedure and the developed system. The average of the recorded trials is compared, and the
+        time difference and percentage improvement are computed automatically:
+        <span class="text-body">% improvement = (manual avg &minus; system avg) &divide; manual avg &times; 100</span>.
+        A positive value means the developed system is faster.
+    </p>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ evaluated_count }}</div>
+            <div class="label">Indicators Fully Compared</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ avg_improvement_display }}</div>
+            <div class="label">Average Improvement (All)</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-info">{{ manual_trials }} / {{ system_trials }}</div>
+            <div class="label">Timed Trials &mdash; Manual / System</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">{{ total_measurements }}</div>
+            <div class="label">Total Trial Records Logged</div>
+        </div>
+    </div>
+</div>
+
+<!-- Add indicator -->
+<div class="card p-3 mb-4 no-print">
+    <a class="d-flex justify-content-between align-items-center text-decoration-none" data-bs-toggle="collapse" href="#addIndicator" role="button">
+        <span class="fw-semibold"><i class="bi bi-plus-circle text-success"></i> Add an efficiency indicator</span>
+        <i class="bi bi-chevron-down text-muted"></i>
+    </a>
+    <div class="collapse mt-3" id="addIndicator">
+        <form method="POST" action="{{ url_for('efficiency.save_indicator') }}" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small mb-1">Indicator name *</label>
+                <input type="text" name="name" class="form-control form-control-sm" required placeholder="e.g. Retrieval of project records">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small mb-1">Description</label>
+                <input type="text" name="description" class="form-control form-control-sm" placeholder="What is being measured">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Unit</label>
+                <input type="text" name="unit" class="form-control form-control-sm" value="seconds">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small mb-1">Sort order</label>
+                <input type="number" name="sort_order" class="form-control form-control-sm" value="0">
+            </div>
+            <div class="col-md-1 d-grid">
+                <button class="btn btn-sm btn-success">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0">Comparative Results Per Indicator</h6>
+        <span class="small text-muted">Averages are computed from the recorded trials below</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Indicator</th>
+                    <th class="text-center">Manual Procedure</th>
+                    <th class="text-center">Developed System</th>
+                    <th class="text-center">Time Difference</th>
+                    <th class="text-center">% Improvement</th>
+                    <th>Assessment</th>
+                    <th class="text-end">Trials</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in rows %}
+                <tr>
+                    <td>
+                        <div class="fw-semibold">{{ row.indicator.name }}</div>
+                        {% if row.indicator.description %}<div class="small text-muted">{{ row.indicator.description }}</div>{% endif %}
+                    </td>
+                    <td class="text-center small">{{ row.manual_display }}</td>
+                    <td class="text-center small">{{ row.system_display }}</td>
+                    <td class="text-center small">{{ row.difference_text or '—' }}</td>
+                    <td class="text-center">
+                        {% if row.pct is not none %}
+                        <span class="badge text-bg-{{ 'success' if row.pct >= 5 else ('danger' if row.pct <= -5 else 'secondary') }}">{{ row.pct_display }}</span>
+                        {% else %}<span class="text-muted small">—</span>{% endif %}
+                    </td>
+                    <td><span class="badge text-bg-{{ row.verdict_class }}">{{ row.verdict }}</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#trials-{{ row.indicator.id }}" aria-expanded="false">
+                            <i class="bi bi-list-ul"></i> {{ row.indicator.measurements|length }}
+                        </button>
+                    </td>
+                </tr>
+                <tr class="collapse no-print" id="trials-{{ row.indicator.id }}">
+                    <td colspan="7" class="bg-light p-3">
+                        <div class="row g-3">
+                            <div class="col-lg-7">
+                                <h6 class="fw-bold small mb-2">Recorded Timed Trials</h6>
+                                {% if row.measurements %}
+                                <div class="table-responsive">
+                                    <table class="table table-sm table-bordered align-middle mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Method</th>
+                                                <th class="text-center">Duration</th>
+                                                <th>Date</th>
+                                                <th>Measured by</th>
+                                                <th>Notes</th>
+                                                <th></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for m in row.measurements %}
+                                            <tr>
+                                                <td>
+                                                    {% if m.method == 'Manual' %}<span class="badge text-bg-light border text-dark">{{ m.method }}</span>
+                                                    {% else %}<span class="badge text-bg-primary">{{ m.method }}</span>{% endif %}
+                                                </td>
+                                                <td class="text-center small">{{ '%.1f'|format(m.duration_seconds) }} s</td>
+                                                <td class="small">{{ m.measured_on.strftime('%b %d, %Y') }}</td>
+                                                <td class="small">{{ m.measured_by or '—' }}</td>
+                                                <td class="small text-muted">{{ m.notes or '' }}</td>
+                                                <td class="text-end">
+                                                    <form method="POST" action="{{ url_for('efficiency.delete_measurement', measurement_id=m.id) }}" class="d-inline"
+                                                          onsubmit="return confirm('Delete this timed trial?');">
+                                                        <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                    </form>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <p class="small text-muted mb-0">No trials recorded yet.</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-lg-5">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="fw-bold small mb-2"><i class="bi bi-stopwatch"></i> Add a Timed Trial</h6>
+                                    <form method="POST" action="{{ url_for('efficiency.save_measurement', indicator_id=row.indicator.id) }}" class="row g-2">
+                                        <div class="col-6">
+                                            <label class="form-label small mb-1">Method</label>
+                                            <select name="method" class="form-select form-select-sm">
+                                                {% for mm in methods %}<option value="{{ mm }}">{{ mm }}</option>{% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="col-3">
+                                            <label class="form-label small mb-1">Minutes</label>
+                                            <input type="number" name="minutes" class="form-control form-control-sm" value="0" min="0" step="any">
+                                        </div>
+                                        <div class="col-3">
+                                            <label class="form-label small mb-1">Seconds</label>
+                                            <input type="number" name="seconds" class="form-control form-control-sm" value="0" min="0" step="any">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small mb-1">Measured on</label>
+                                            <input type="date" name="measured_on" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label small mb-1">Notes (optional)</label>
+                                            <input type="text" name="notes" class="form-control form-control-sm">
+                                        </div>
+                                        <div class="col-12">
+                                            <button class="btn btn-sm btn-primary w-100">Record Trial</button>
+                                        </div>
+                                    </form>
+                                    <hr class="my-3">
+                                    <h6 class="fw-bold small mb-2"><i class="bi bi-pencil-square"></i> Edit Indicator</h6>
+                                    <form method="POST" action="{{ url_for('efficiency.save_indicator') }}" class="row g-2">
+                                        <input type="hidden" name="indicator_id" value="{{ row.indicator.id }}">
+                                        <div class="col-12">
+                                            <input type="text" name="name" class="form-control form-control-sm mb-2" value="{{ row.indicator.name }}" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <input type="text" name="description" class="form-control form-control-sm mb-2" value="{{ row.indicator.description or '' }}" placeholder="Description">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="text" name="unit" class="form-control form-control-sm" value="{{ row.indicator.unit }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <input type="number" name="sort_order" class="form-control form-control-sm" value="{{ row.indicator.sort_order }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <button class="btn btn-sm btn-outline-secondary w-100">Update Indicator</button>
+                                        </div>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('efficiency.delete_indicator', indicator_id=row.indicator.id) }}" class="mt-2"
+                                          onsubmit="return confirm('Delete this indicator and ALL its trials?');">
+                                        <button class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash"></i> Delete Indicator &amp; Trials</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted">No efficiency indicators recorded yet. Add one above to begin timing the manual and system procedures.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<!-- ================= ISO/IEC 25010 PERCEIVED EFFICIENCY (SEPARATE) ================= -->
+<div class="card p-4 mb-4 border-info">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-people text-info fs-5"></i>
+        <h6 class="fw-bold mb-0">ISO/IEC 25010 &mdash; Perceived Performance&ndash;Efficiency (User Perception)</h6>
+    </div>
+    <div class="alert alert-warning py-2 small mb-3">
+        <i class="bi bi-exclamation-triangle"></i>
+        <strong>Presented separately as user-perception data.</strong> These ratings reflect how users perceive the
+        system's efficiency and are shown apart from the objective timed trials above. Perceived results are
+        <strong>not</strong> used as the sole basis for claiming that turnaround time was drastically reduced; the
+        measured trial averages are the primary evidence for such claims.
+    </div>
+
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card p-3 text-center">
+                <div class="value text-primary">{{ perception_statements }}</div>
+                <div class="label">Statements Rated</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card p-3 text-center">
+                <div class="value text-info">{{ perception_responses }}</div>
+                <div class="label">Respondent Ratings</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card p-3 text-center">
+                <div class="value text-success">{{ perception_overall_display }}</div>
+                <div class="label">Overall Mean Rating</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="card stat-card p-3 text-center">
+                <div class="value text-{{ perception_overall_class }}">{{ perception_overall_level }}</div>
+                <div class="label">Perceived Level</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="min-width: 320px;">Perception Statement</th>
+                    <th>Dimension</th>
+                    <th class="text-center">N</th>
+                    <th class="text-center">Mean</th>
+                    <th style="min-width: 220px;">Distribution (1&ndash;5)</th>
+                    <th>Interpretation</th>
+                    <th class="text-end">Responses</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in perceptions %}
+                {% set pobj = p.perception %}
+                <tr>
+                    <td>
+                        <div class="small">{{ pobj.statement }}</div>
+                        <div class="small text-muted">Likert: 1 = {{ likert_labels[1] }}, 5 = {{ likert_labels[5] }}</div>
+                    </td>
+                    <td class="small text-muted">{{ pobj.dimension }}</td>
+                    <td class="text-center small">{{ p.n }}</td>
+                    <td class="text-center fw-semibold">{{ p.mean_display }}</td>
+                    <td>
+                        <div class="d-flex align-items-center gap-1">
+                            {% for rating in range(1, 6) %}
+                            {% set cnt = p.distribution[rating] %}
+                            <div class="flex-grow-1 text-center small">
+                                <div class="d-flex flex-column-reverse align-items-center" style="height: 44px;">
+                                    <div class="rounded-1 {% if cnt %}bg-{{ 'success' if rating >= 4 else ('secondary' if rating == 3 else 'danger') }}{% else %}bg-light border{% endif %}"
+                                         style="height: {{ (cnt / (p.distribution.values()|max if p.n else 1)) * 32 if cnt else 3 }}px; width: 100%;"></div>
+                                </div>
+                                <div class="small fw-bold">{{ cnt }}</div>
+                                <div class="text-muted" style="font-size: 10px;">{{ rating }}</div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </td>
+                    <td><span class="badge text-bg-{{ p.level_class }}">{{ p.level }}</span></td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                data-bs-toggle="collapse" data-bs-target="#resp-{{ pobj.id }}" aria-expanded="false">
+                            <i class="bi bi-list-ul"></i> {{ p.responses|length }}
+                        </button>
+                    </td>
+                </tr>
+                <tr class="collapse no-print" id="resp-{{ pobj.id }}">
+                    <td colspan="7" class="bg-light p-3">
+                        <div class="row g-3">
+                            <div class="col-lg-7">
+                                <h6 class="fw-bold small mb-2">Individual Ratings</h6>
+                                {% if p.responses %}
+                                <table class="table table-sm table-bordered align-middle mb-0">
+                                    <thead class="table-light">
+                                        <tr><th>No.</th><th>Rating</th><th>Respondent</th><th>Date</th><th></th></tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for r in p.responses %}
+                                        <tr>
+                                            <td class="small text-muted">{{ loop.index }}</td>
+                                            <td><span class="badge text-bg-{{ 'success' if r.rating >= 4 else ('secondary' if r.rating == 3 else 'danger') }}">{{ r.rating }} &mdash; {{ likert_labels[r.rating] }}</span></td>
+                                            <td class="small">{{ r.respondent or 'Anonymous' }}</td>
+                                            <td class="small">{{ r.responded_on.strftime('%b %d, %Y') }}</td>
+                                            <td class="text-end">
+                                                <form method="POST" action="{{ url_for('efficiency.delete_response', perception_id=pobj.id, response_id=r.id) }}" class="d-inline"
+                                                      onsubmit="return confirm('Delete this rating?');">
+                                                    <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                {% else %}
+                                <p class="small text-muted mb-0">No ratings recorded yet.</p>
+                                {% endif %}
+                            </div>
+                            <div class="col-lg-5">
+                                <div class="border rounded p-3 h-100">
+                                    <h6 class="fw-bold small mb-2"><i class="bi bi-plus-circle"></i> Record Ratings</h6>
+                                    <form method="POST" action="{{ url_for('efficiency.record_perception', perception_id=pobj.id) }}" class="row g-2">
+                                        {% for rating in range(1, 6) %}
+                                        <div class="col-2 text-center">
+                                            <label class="form-label small mb-1 d-block">{{ rating }}</label>
+                                            <input type="number" name="rating_{{ rating }}" class="form-control form-control-sm text-center" value="0" min="0" max="500">
+                                        </div>
+                                        <div class="col-10 align-self-end small text-muted">{{ likert_labels[rating] }}</div>
+                                        {% endfor %}
+                                        <div class="col-12">
+                                            <label class="form-label small mb-1">Respondent label (optional)</label>
+                                            <input type="text" name="respondent" class="form-control form-control-sm" placeholder="e.g. R1, EO Staff C">
+                                        </div>
+                                        <div class="col-12">
+                                            <button class="btn btn-sm btn-primary w-100">Save Ratings</button>
+                                        </div>
+                                    </form>
+                                    <form method="POST" action="{{ url_for('efficiency.delete_perception', perception_id=pobj.id) }}" class="mt-2"
+                                          onsubmit="return confirm('Delete this statement and ALL its ratings?');">
+                                        <button class="btn btn-sm btn-outline-danger w-100"><i class="bi bi-trash"></i> Delete Statement</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted">No perception statements recorded yet. Add one below for the ISO/IEC 25010 user-perception data.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card p-3 mt-3 no-print">
+        <a class="d-flex justify-content-between align-items-center text-decoration-none" data-bs-toggle="collapse" href="#addPerception" role="button">
+            <span class="fw-semibold"><i class="bi bi-plus-circle text-info"></i> Add a perception statement</span>
+            <i class="bi bi-chevron-down text-muted"></i>
+        </a>
+        <div class="collapse mt-3" id="addPerception">
+            <form method="POST" action="{{ url_for('efficiency.save_perception') }}" class="row g-2 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label small mb-1">Statement *</label>
+                    <input type="text" name="statement" class="form-control form-control-sm" required
+                           placeholder="e.g. Records I need are retrieved quickly whenever I request them.">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small mb-1">Dimension</label>
+                    <input type="text" name="dimension" class="form-control form-control-sm" value="ISO/IEC 25010 Performance Efficiency (Perceived)">
+                </div>
+                <div class="col-md-1 d-grid">
+                    <button class="btn btn-sm btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="card p-3 mb-2">
+    <h6 class="fw-bold small mb-2">Methodology Notes</h6>
+    <ul class="small text-muted mb-0 ps-3">
+        <li class="mb-1">Durations are actual recorded (timed) observations of each procedure, stored per trial. Averages use the arithmetic mean of the recorded trials for each method.</li>
+        <li class="mb-1"><strong>Time difference</strong> = manual average &minus; system average. A positive difference means the developed system completes the task faster.</li>
+        <li class="mb-1"><strong>% improvement</strong> = (manual average &minus; system average) &divide; manual average &times; 100. This is displayed per indicator and averaged across all fully compared indicators.</li>
+        <li class="mb-0"><strong>Perception data:</strong> the ISO/IEC 25010 performance&ndash;efficiency ratings (1&ndash;5 Likert) are user-perception data, displayed separately. They support the evaluation but are not the sole basis for turnaround-time improvement claims.</li>
+    </ul>
+</div>
+{% endblock %}

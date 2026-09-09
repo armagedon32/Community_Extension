@@ -463,3 +463,90 @@ class SurveySubmission(db.Model):
 
     def __repr__(self):
         return f"<SurveySubmission {self.id} survey={self.survey_id}>"
+
+
+# Efficiency-comparison module (existing manual procedure vs developed system)
+
+EFFICIENCY_METHODS = ["Manual", "System"]
+
+
+class EfficiencyIndicator(db.Model):
+    """A task/indicator whose turnaround time is timed for both the existing
+    manual procedure and the developed system.
+
+    Each indicator stores the recorded timed trials (``EfficiencyMeasurement``
+    rows) for both methods. The objective average, time difference and
+    percentage improvement are computed from those trials and presented in the
+    Efficiency Comparison page.
+    """
+    __tablename__ = "efficiency_indicators"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    unit = db.Column(db.String(20), nullable=False, default="seconds")
+    sort_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    measurements = db.relationship(
+        "EfficiencyMeasurement", backref="indicator", lazy=True,
+        cascade="all, delete-orphan", order_by="EfficiencyMeasurement.measured_on")
+
+    def __repr__(self):
+        return f"<EfficiencyIndicator {self.name}>"
+
+
+class EfficiencyMeasurement(db.Model):
+    """One observed (timed) trial of a manual or system procedure."""
+    __tablename__ = "efficiency_measurements"
+
+    id = db.Column(db.Integer, primary_key=True)
+    indicator_id = db.Column(db.Integer, db.ForeignKey("efficiency_indicators.id"), nullable=False)
+    method = db.Column(db.String(20), nullable=False, default="Manual")
+    duration_seconds = db.Column(db.Float, nullable=False, default=0)
+    measured_on = db.Column(db.Date, default=datetime.utcnow)
+    measured_by = db.Column(db.String(150), nullable=True)
+    notes = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<EfficiencyMeasurement {self.method} {self.duration_seconds}s>"
+
+
+class EfficiencyPerception(db.Model):
+    """ISO/IEC 25010 perceived performance-efficiency statement.
+
+    Kept strictly separate from the objective timed trials: this is
+    user-perception data and must not be used as the sole basis for claiming
+    that turnaround time was drastically reduced.
+    """
+    __tablename__ = "efficiency_perceptions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    statement = db.Column(db.String(500), nullable=False)
+    dimension = db.Column(
+        db.String(150), nullable=False,
+        default="ISO/IEC 25010 Performance Efficiency (Perceived)")
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    responses = db.relationship(
+        "EfficiencyPerceptionResponse", backref="perception", lazy=True,
+        cascade="all, delete-orphan", order_by="EfficiencyPerceptionResponse.created_at")
+
+    def __repr__(self):
+        return f"<EfficiencyPerception {self.statement[:40]}>"
+
+
+class EfficiencyPerceptionResponse(db.Model):
+    """A single user rating (1-5) for a perceived performance-efficiency statement."""
+    __tablename__ = "efficiency_perception_responses"
+
+    id = db.Column(db.Integer, primary_key=True)
+    perception_id = db.Column(db.Integer, db.ForeignKey("efficiency_perceptions.id"), nullable=False)
+    rating = db.Column(db.Integer, nullable=False)
+    respondent = db.Column(db.String(150), nullable=True)
+    responded_on = db.Column(db.Date, default=datetime.utcnow)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<EfficiencyPerceptionResponse {self.rating}>"

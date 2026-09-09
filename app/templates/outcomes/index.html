@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block title %}Outcome-Based Evaluation - CELMIS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h4 class="fw-bold mb-0">AI Outcome-Based Evaluation</h4>
+        <span class="text-muted small">Measurable, transparent outcome ratings aligned with approved proposals</span>
+    </div>
+    <span class="badge text-bg-light border text-dark">{{ data.computed_at.strftime('%b %d, %Y %H:%M') }}</span>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-clipboard2-data text-primary fs-5"></i>
+        <h6 class="fw-bold mb-0">How the Outcome Rating Is Generated</h6>
+    </div>
+    <p class="small text-muted mb-2">
+        Each approved extension project (status <strong>Ongoing</strong> or <strong>Completed</strong>) is
+        scored on <strong>measurable indicators</strong> derived from the deliverables and outcomes stated in
+        its approved proposal. The system reads the recorded data, applies clearly defined thresholds for
+        <strong>Low</strong>, <strong>Medium</strong>, and <strong>High</strong>, and displays the rating
+        together with the indicators and the basis used for the classification.
+    </p>
+    <ul class="small text-muted mb-0 ps-3">
+        <li class="mb-1"><strong>Dataset:</strong> the evaluation consults projects, activities, accomplishment reports, beneficiaries, approved financial transactions, and partnership records.</li>
+        <li class="mb-1"><strong>Indicators:</strong> Deliverable Completion, Deliverable Documentation, Activity Implementation, Beneficiary Reach, and Budget Utilization.</li>
+        <li class="mb-1"><strong>Overall score</strong> = equal-weighted average of the applicable indicator scores (0&ndash;100).</li>
+        <li class="mb-1"><strong>Rating:</strong> Low &lt; 50 &nbsp;|&nbsp; Medium 50&ndash;79 &nbsp;|&nbsp; High &ge; 80.</li>
+        <li class="mb-0"><strong>Proposed</strong> projects are still pending approval and are not scored ({{ data.excluded_proposed }} pending).</li>
+    </ul>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-primary">{{ data.total_evaluated }}</div>
+            <div class="label">Projects Evaluated</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ data.average_score|default('—') }}</div>
+            <div class="label">Average Outcome Score</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-success">{{ data.dist.High }}</div>
+            <div class="label">High Outcomes</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card stat-card p-3 text-center">
+            <div class="value text-warning">{{ data.dist.Medium + data.dist.Low }}</div>
+            <div class="label">Needs Attention</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card p-3 h-100">
+            <h6 class="fw-bold mb-3">Outcome Distribution</h6>
+            {% if data.evaluations %}
+            <div id="outcomeChart"></div>
+            {% else %}
+            <p class="small text-muted mb-0">No approved projects to evaluate yet.</p>
+            {% endif %}
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card p-3 h-100">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0">Evaluated Projects</h6>
+                <span class="small text-muted">Ratings are recomputed live from the recorded data</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>Project</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Outcome Score</th>
+                            <th>Rating</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for e in data.evaluations %}
+                        {% set p = e.project %}
+                        <tr>
+                            <td class="fw-semibold">{{ p.title }}</td>
+                            <td class="small">{{ p.category }}</td>
+                            <td>
+                                {% if p.status == 'Completed' %}<span class="badge text-bg-success">{{ p.status }}</span>
+                                {% elif p.status == 'Ongoing' %}<span class="badge text-bg-warning">{{ p.status }}</span>
+                                {% else %}<span class="badge text-bg-secondary">{{ p.status }}</span>{% endif %}
+                            </td>
+                            <td style="min-width: 130px;">
+                                <div class="d-flex align-items-center gap-2">
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-{{ e.rating_class }}" style="width: {{ e.overall_score }}%"></div>
+                                    </div>
+                                    <small>{{ e.overall_score }}</small>
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge text-bg-{{ level_class[e.rating] }}">{{ e.rating }}</span>
+                            </td>
+                            <td class="text-end">
+                                <a href="{{ url_for('outcomes.detail', project_id=p.id) }}" class="btn btn-sm btn-outline-primary">View Basis</a>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-muted">No approved projects on record. Projects must be Ongoing or Completed to be scored.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-signpost-split text-primary fs-5"></i>
+        <h6 class="fw-bold mb-0">Classification Criteria (Overall Rating)</h6>
+    </div>
+    <div class="row g-2 small text-muted mb-0">
+        {% for level in ['Low', 'Medium', 'High'] %}
+        {% set lo, hi = breakpoints[level] %}
+        <div class="col-md-4">
+            <div class="border rounded p-3">
+                <span class="badge text-bg-{{ level_class[level] }} mb-1">{{ level }}</span>
+                <div class="mt-1">Average outcome score from <strong>{{ lo }}</strong> to &lt; <strong>{{ hi }}</strong>.</div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const distData = {{ data.dist | tojson }};
+
+    new ApexCharts(document.querySelector("#outcomeChart"), {
+        chart: { type: "bar", height: 260 },
+        series: [{ name: "Projects", data: Object.values(distData) }],
+        xaxis: { categories: Object.keys(distData), labels: { style: { fontSize: "12px" } } },
+        colors: ["#0d9488"],
+        plotOptions: { bar: { borderRadius: 4, columnWidth: "55%" } },
+        dataLabels: { enabled: false },
+        grid: { borderColor: "#e2e8f0" }
+    }).render();
+</script>
+{% endblock %}

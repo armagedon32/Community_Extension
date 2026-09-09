@@ -47,6 +47,7 @@ def create_app(config_class=Config):
     from app.routes.decision import decision_bp
     from app.routes.predictive import predictive_bp
     from app.routes.compliance import compliance_bp
+    from app.routes.outcomes import outcomes_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(dashboard_bp)
@@ -65,6 +66,7 @@ def create_app(config_class=Config):
     app.register_blueprint(decision_bp)
     app.register_blueprint(predictive_bp)
     app.register_blueprint(compliance_bp)
+    app.register_blueprint(outcomes_bp)
 
     with app.app_context():
         db.create_all()

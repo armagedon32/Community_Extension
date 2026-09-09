@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+{% block title %}Outcome Basis - CELMIS{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('outcomes.index') }}" class="text-decoration-none small"><i class="bi bi-arrow-left"></i> Back to Outcome-Based Evaluation</a>
+        <h4 class="fw-bold mb-0 mt-1">Outcome Assessment Basis</h4>
+        <span class="text-muted small">{{ evaluation.project.title }}</span>
+    </div>
+    <span class="badge text-bg-light border text-dark">{{ evaluation.computed_at.strftime('%b %d, %Y %H:%M') }}</span>
+</div>
+
+{% if not evaluation.approved %}
+<div class="alert alert-warning">
+    <strong>Project not yet approved.</strong> This project is still in <em>Proposed</em> status. The outcome
+    rating is not assigned until implementation begins (status <em>Ongoing</em> or <em>Completed</em>); the
+    indicators below are shown for reference.
+</div>
+{% endif %}
+
+{% set p = evaluation.project %}
+<div class="card p-4 mb-4">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+        <div>
+            <h5 class="fw-bold mb-1">{{ p.title }}</h5>
+            <div class="d-flex flex-wrap gap-2">
+                <span class="badge text-bg-primary">{{ p.category }}</span>
+                {% if p.status == 'Completed' %}<span class="badge text-bg-success">{{ p.status }}</span>
+                {% elif p.status == 'Ongoing' %}<span class="badge text-bg-warning">{{ p.status }}</span>
+                {% else %}<span class="badge text-bg-secondary">{{ p.status }}</span>{% endif %}
+                <span class="badge text-bg-light border text-dark">Budget: ₱{{ "{:,.0f}".format(p.budget or 0) }}</span>
+                <span class="badge text-bg-light border text-dark">Progress: {{ p.progress }}%</span>
+            </div>
+        </div>
+        <div class="text-center px-3">
+            <div class="small text-muted text-uppercase">Overall Outcome Rating</div>
+            {% if evaluation.rating %}
+            <div class="display-6 fw-bold text-{{ evaluation.rating_class }}">{{ evaluation.rating }}</div>
+            <div class="small text-muted">Average score: {{ evaluation.overall_score }} / 100</div>
+            {% else %}
+            <div class="display-6 fw-bold text-muted">—</div>
+            <div class="small text-muted">Pending proposal approval</div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-5">
+        <div class="card p-4 h-100">
+            <div class="d-flex align-items-center gap-2 mb-3">
+                <i class="bi bi-database text-info fs-5"></i>
+                <h6 class="fw-bold mb-0">Dataset Consulted for This Assessment</h6>
+            </div>
+            <p class="small text-muted mb-2">
+                The rating is generated from the following recorded CELMIS data for this project:
+            </p>
+            <table class="table table-sm small align-middle mb-0">
+                <thead>
+                    <tr><th>Data Source</th><th>Measures</th><th class="text-end">Records</th></tr>
+                </thead>
+                <tbody>
+                    {% for d in evaluation.dataset %}
+                    <tr>
+                        <td class="fw-semibold">{{ d.source }}</td>
+                        <td class="text-muted">{{ d.purpose }}</td>
+                        <td class="text-end">{{ d.records }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card p-4 h-100">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <i class="bi bi-list-check text-primary fs-5"></i>
+                <h6 class="fw-bold mb-0">Overall Score Computation</h6>
+            </div>
+            <p class="small text-muted mb-3">
+                {{ evaluation.indicator_count }} applicable indicator(s), equally weighted:
+                score = (sum of indicator scores) / {{ evaluation.indicator_count }}.
+            </p>
+            <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="small text-muted">Average score</div>
+                <div class="progress flex-grow-1" style="height: 12px;">
+                    <div class="progress-bar bg-{{ evaluation.rating_class }}" style="width: {{ evaluation.overall_score }}%"></div>
+                </div>
+                <strong>{{ evaluation.overall_score }}/100</strong>
+            </div>
+            <div class="row g-2 mb-0">
+                {% for level in ['Low', 'Medium', 'High'] %}
+                {% set lo, hi = breakpoints[level] %}
+                <div class="col-md-4">
+                    <div class="border rounded p-2 text-center">
+                        <span class="badge text-bg-{{ level_class[level] }}">{{ level }}</span>
+                        <div class="small text-muted mt-1">{{ lo }} &le; score &lt; {{ hi }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-rulers text-primary fs-5"></i>
+            <h6 class="fw-bold mb-0">Measurable Indicators &amp; Classification Basis</h6>
+        </div>
+        <span class="small text-muted">Aligned with the deliverables and outcomes of the approved proposal</span>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="min-width: 180px;">Indicator</th>
+                    <th>What It Measures</th>
+                    <th>Data Source</th>
+                    <th>Observed Value</th>
+                    <th>Score</th>
+                    <th>Rating</th>
+                    <th>Classification Basis</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ind in evaluation.indicators %}
+                <tr>
+                    <td class="fw-semibold">
+                        {{ ind.name }}
+                        {% if not ind.applicable %}
+                        <span class="badge text-bg-light border text-muted ms-1">N/A</span>
+                        {% endif %}
+                    </td>
+                    <td class="small text-muted">{{ ind.description }}</td>
+                    <td class="small">{{ ind.dataset }}</td>
+                    <td class="small">{{ ind.display|safe }}</td>
+                    <td style="min-width: 120px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <div class="progress flex-grow-1" style="height: 8px;">
+                                <div class="progress-bar bg-{{ level_class[ind.level] }}" style="width: {{ ind.score }}%"></div>
+                            </div>
+                            <small>{{ ind.score }}</small>
+                        </div>
+                    </td>
+                    <td><span class="badge text-bg-{{ level_class[ind.level] }}">{{ ind.level }}</span></td>
+                    <td class="small text-muted">
+                        {{ ind.basis }}
+                        {% for c in ind.criteria if c.level == ind.level %}
+                        <span class="badge text-bg-light border text-dark d-inline-block mt-1">{{ c.level }}: {{ c.condition }}</span>
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-2">
+        <i class="bi bi-patch-check text-success fs-5"></i>
+        <h6 class="fw-bold mb-0">Transparency Statement</h6>
+    </div>
+    <p class="small text-muted mb-0">
+        This AI-generated outcome assessment is computed live from the data recorded in CELMIS on
+        {{ evaluation.computed_at.strftime('%b %d, %Y at %H:%M') }}. All indicators, thresholds, and the
+        basis for the <strong>{{ evaluation.rating or 'not yet assigned' }}</strong> rating are displayed above
+        and can be re-verified at any time by opening this page again.
+    </p>
+</div>
+{% endblock %}

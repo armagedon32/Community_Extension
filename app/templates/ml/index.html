@@ -42,6 +42,41 @@
 {% endif %}
 {% endmacro %}
 
+{% macro per_class_metrics(chart) %}
+{% set report = chart.classification_report if chart else none %}
+{% if report %}
+<hr>
+<h6 class="fw-bold mb-2">Per-Class Metrics <span class="text-muted fw-normal small">(held-out test set)</span></h6>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Class</th>
+                <th class="text-center">Precision</th>
+                <th class="text-center">Recall</th>
+                <th class="text-center">F1-Score</th>
+                <th class="text-center">Test N</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cls in chart.classes %}
+            {% if cls in report %}
+            {% set r = report[cls] %}
+            <tr>
+                <td class="small">{{ cls }}</td>
+                <td class="text-center small">{{ '%.1f'|format((r.precision or 0) * 100) }}%</td>
+                <td class="text-center small">{{ '%.1f'|format((r.recall or 0) * 100) }}%</td>
+                <td class="text-center small">{{ '%.1f'|format((r['f1-score'] or 0) * 100) }}%</td>
+                <td class="text-center small">{{ r.support }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endmacro %}
+
 {% macro accuracy_computation(chart) %}
 {% if chart and chart.accuracy_detail %}
 {% set ad = chart.accuracy_detail %}
@@ -379,7 +414,10 @@
         <div class="card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start mb-1">
                 <h6 class="fw-bold mb-0">Document Type Model</h6>
-                {% if ns.active_type %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_type %}<span class="badge text-bg-warning">Trained</span>{% endif %}
+                <div class="d-flex gap-2 align-items-center">
+                    {% if ns.active_type %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_type %}<span class="badge text-bg-warning">Trained</span>{% endif %}
+                    {% if latest %}<a href="{{ url_for('ml.model_detail', model_id=latest.id) }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
+                </div>
             </div>
             <span class="text-muted small mb-3">Proposal / Activity Design / Accomplishment / M&amp;E / MOA / Feedback</span>
             {% if latest %}
@@ -413,6 +451,7 @@
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
             {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
+            {{ per_class_metrics(chart) }}
             {{ interpretation_insights(chart) }}
             {% else %}
             <p class="text-muted mb-0">Not trained yet. Add labeled documents then click <strong>1. Train Naive Bayes</strong>.</p>
@@ -423,7 +462,10 @@
         <div class="card p-4 h-100">
             <div class="d-flex justify-content-between align-items-start mb-1">
                 <h6 class="fw-bold mb-0">Project Category Model</h6>
-                {% if ns.active_domain %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_domain %}<span class="badge text-bg-warning">Trained</span>{% endif %}
+                <div class="d-flex gap-2 align-items-center">
+                    {% if ns.active_domain %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_domain %}<span class="badge text-bg-warning">Trained</span>{% endif %}
+                    {% if latest_domain %}<a href="{{ url_for('ml.model_detail', model_id=latest_domain.id) }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
+                </div>
             </div>
             <span class="text-muted small mb-3">Education / Livelihood / Governance / Environment / Health / etc.</span>
             {% if latest_domain %}
@@ -457,6 +499,7 @@
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
             {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
+            {{ per_class_metrics(chart_domain) }}
             {{ interpretation_insights(chart_domain) }}
             {% else %}
             <p class="text-muted mb-0">Not trained yet. Add at least 3 documents with a project category/domain label.</p>
@@ -493,6 +536,8 @@
                             <th>Name</th>
                             <th>Version</th>
                             <th>Accuracy</th>
+                            <th>Precision</th>
+                            <th>Recall</th>
                             <th>F1</th>
                             <th>Status</th>
                             <th>Date</th>
@@ -505,6 +550,8 @@
                             <td class="small">{{ m.name }}</td>
                             <td class="small">{{ m.model_version or '—' }}</td>
                             <td>{{ '%.1f'|format((m.accuracy or 0) * 100) }}%</td>
+                            <td>{{ '%.1f'|format((m.precision or 0) * 100) }}%</td>
+                            <td>{{ '%.1f'|format((m.recall or 0) * 100) }}%</td>
                             <td>{{ '%.1f'|format((m.f1 or 0) * 100) }}%</td>
                             <td>
                                 {% if m.status == 'Active' %}<span class="badge text-bg-success">Active</span>
@@ -514,6 +561,7 @@
                             </td>
                             <td class="small text-muted">{{ m.created_at.strftime('%b %d, %Y') }}</td>
                             <td class="text-end">
+                                <a href="{{ url_for('ml.model_detail', model_id=m.id) }}" class="btn btn-sm btn-outline-secondary" title="View full quantitative evaluation"><i class="bi bi-eye"></i> View</a>
                                 {% if m.status == 'Trained' %}
                                 <form method="POST" action="{{ url_for('ml.activate_model', model_id=m.id) }}" class="d-inline">
                                     <button class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Activate</button>
@@ -526,7 +574,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="7" class="text-center text-muted">No model runs recorded.</td></tr>
+                        <tr><td colspan="9" class="text-center text-muted">No model runs recorded.</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

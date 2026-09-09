@@ -236,6 +236,29 @@ def _next_version(name):
     return f"v{existing + 1}"
 
 
+def _attach_test_predictions(metrics, docs):
+    """Attach per-test-sample truth vs prediction for verification.
+
+    The stored metrics already contain the held-out test indices and the
+    actual predictions; this pairs each test document with its true label,
+    predicted label, and whether the prediction was correct, so the numbers
+    reported for Research Question No. 4 are fully verifiable.
+    """
+    titles = [d.title or "" for d in docs]
+    y_test = metrics.get("y_test") or []
+    preds = metrics.get("predictions") or []
+    idx = metrics.get("test_indices") or []
+    metrics["test_predictions"] = [
+        {
+            "title": titles[i] if 0 <= i < len(titles) else f"sample-{i}",
+            "actual": y_test[k],
+            "predicted": preds[k],
+            "correct": y_test[k] == preds[k],
+        }
+        for k, i in enumerate(idx)
+    ]
+
+
 def _record_model_run(name, metrics, dataset_summary=None, version=None):
     """Record a trained (not yet activated) model run."""
     dist = None
@@ -298,6 +321,7 @@ def train_model():
     model, vectorizer, metrics = engine.train_naive_bayes_detailed(texts, labels)
     duration = round(time.time() - started, 2)
     metrics["training_duration"] = duration
+    _attach_test_predictions(metrics, type_docs)
     engine.save_model(model, vectorizer, metrics["classes"], "type")
 
     _record_model_run(
@@ -320,6 +344,7 @@ def train_model():
         started = time.time()
         d_model, d_vec, d_metrics = engine.train_domain_model_detailed(domain_texts, domain_labels)
         d_metrics["training_duration"] = round(time.time() - started, 2)
+        _attach_test_predictions(d_metrics, domain_docs)
         _record_model_run(
             "Multinomial Naive Bayes - Project Category",
             d_metrics,
@@ -505,6 +530,61 @@ def _classify_and_store(doc):
         flash("Unable to classify this document (not enough training data yet).", "warning")
 
 
+def _metrics_view(model):
+    """Parse a model run's stored metrics into a display-ready dict.
+
+    Returns the quantitative evaluation results (accuracy, precision, recall,
+    F1, confusion matrix, per-class report, accuracy computation, and the
+    per-sample test predictions) required for Research Question No. 4.
+    """
+    if model is None or not model.metrics_json:
+        return None
+    try:
+        m = json.loads(model.metrics_json)
+        report = m.get("classification_report") or {}
+        return {
+            "accuracy": m.get("accuracy"),
+            "precision": m.get("precision"),
+            "recall": m.get("recall"),
+            "f1": m.get("f1"),
+            "confusion_matrix": m.get("confusion_matrix"),
+            "classes": m.get("classes"),
+            "test_samples": m.get("test_samples"),
+            "train_samples": m.get("train_samples"),
+            "accuracy_detail": m.get("accuracy_detail"),
+            "per_class_test": m.get("per_class_test"),
+            "classification_report": report,
+            "test_predictions": m.get("test_predictions"),
+        }
+    except Exception:
+        return None
+
+
+@ml_bp.route("/ml/model/<int:model_id>")
+@login_required
+def model_detail(model_id):
+    """Full, print-able quantitative evaluation of a single model run.
+
+    Displays the actual evaluation results required by Research Question
+    No. 4 (accuracy, precision, recall, F1-score, confusion matrix, and the
+    number of test samples) computed automatically from the held-out test
+    predictions, together with the per-class report and the test samples
+    themselves for verification and documentation.
+    """
+    from datetime import datetime
+
+    model_run = db.get_or_404(MLModel, model_id)
+    view = _metrics_view(model_run)
+    return render_template(
+        "ml/model_detail.html",
+        model=model_run,
+        chart=view,
+        implied_by="Evaluation computed automatically from the actual "
+                   "predictions on the held-out 20% testing dataset.",
+        generated_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
+    )
+
+
 @ml_bp.route("/ml")
 @login_required
 def dashboard():
@@ -531,28 +611,6 @@ def dashboard():
                 d["domain_split"] = domain_split.get(doc_id)
                 viewer_documents.append(d)
 
-    def _chart(model):
-        if model is None or not model.metrics_json:
-            return None
-        try:
-            m = json.loads(model.metrics_json)
-            report = m.get("classification_report") or {}
-            return {
-                "accuracy": m.get("accuracy"),
-                "precision": m.get("precision"),
-                "recall": m.get("recall"),
-                "f1": m.get("f1"),
-                "confusion_matrix": m.get("confusion_matrix"),
-                "classes": m.get("classes"),
-                "test_samples": m.get("test_samples"),
-                "train_samples": m.get("train_samples"),
-                "accuracy_detail": m.get("accuracy_detail"),
-                "per_class_test": m.get("per_class_test"),
-                "classification_report": report,
-            }
-        except Exception:
-            return None
-
     type_model = next((m for m in models if "Document Type" in m.name and m.status != "Archived"), None)
     if type_model is None:
         type_model = next((m for m in models if "Document Type" in m.name), None)
@@ -567,8 +625,8 @@ def dashboard():
         latest_domain=domain_model,
         latest_any_type=next((m for m in models if "Document Type" in m.name), None),
         latest_any_domain=next((m for m in models if "Project Category" in m.name), None),
-        chart=_chart(type_model),
-        chart_domain=_chart(domain_model),
+        chart=_metrics_view(type_model),
+        chart_domain=_metrics_view(domain_model),
         labeled=labeled_count,
         domain_count=domain_count,
         doc_count=doc_count,

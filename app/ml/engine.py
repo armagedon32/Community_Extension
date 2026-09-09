@@ -24,7 +24,6 @@ from sklearn.metrics import (
     precision_score,
     recall_score,
 )
-from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
 
 from app.ml.preprocess import preprocess, preprocess_domain
@@ -68,12 +67,9 @@ def _paths(kind):
 
 
 def _train(texts, labels, kind):
-    """Shared training routine for a given model kind."""
-    vectorizer = _vectorizer()
-    X = vectorizer.fit_transform([_preprocess_text(t, kind) for t in texts])
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, labels, test_size=0.2, random_state=42, stratify=labels
+    """Shared training routine for a given model kind (leakage-free)."""
+    vectorizer, X_train, X_test, idx_train, idx_test, y_train, y_test = (
+        _fit_on_train_only(texts, labels, kind)
     )
 
     # Type classes are roughly balanced (informative priors help); domain classes
@@ -84,23 +80,9 @@ def _train(texts, labels, kind):
     predictions = model.predict(X_test)
 
     unique_labels = sorted(set(labels))
-    cm = confusion_matrix(y_test, predictions, labels=unique_labels)
-    report = classification_report(
-        y_test, predictions, labels=unique_labels, zero_division=0, output_dict=True
+    metrics = _evaluation_metrics(
+        y_test, predictions, unique_labels, len(texts), idx_train, idx_test
     )
-
-    metrics = {
-        "accuracy": round(accuracy_score(y_test, predictions), 4),
-        "precision": round(precision_score(y_test, predictions, average="macro", zero_division=0), 4),
-        "recall": round(recall_score(y_test, predictions, average="macro", zero_division=0), 4),
-        "f1": round(f1_score(y_test, predictions, average="macro", zero_division=0), 4),
-        "samples": len(texts),
-        "train_samples": len(X_train.toarray()),
-        "test_samples": len(X_test.toarray()),
-        "classes": unique_labels,
-        "confusion_matrix": cm.tolist(),
-        "classification_report": report,
-    }
 
     save_model(model, vectorizer, labels, kind)
     return model, vectorizer, metrics
@@ -126,6 +108,232 @@ def prepare_dataset(documents):
     texts = [doc.content or "" for doc in documents]
     labels = [doc.category for doc in documents]
     return texts, labels
+
+
+def get_dataset_summary(documents):
+    """Return a full summary of the labeled training dataset.
+
+    Includes total datapoints, per-category and per-domain distributions,
+    and the 80/20 stratified split sizes.
+    """
+    from collections import Counter
+
+    total = len(documents)
+    type_docs = [d for d in documents if d.category is not None]
+    domain_docs = [d for d in documents if d.domain is not None]
+
+    type_labels = [d.category for d in type_docs]
+    domain_labels = [d.domain for d in domain_docs]
+
+    type_dist = dict(Counter(type_labels).most_common())
+    domain_dist = dict(Counter(domain_labels).most_common())
+
+    train_ratio = 0.8
+    test_ratio = 0.2
+
+    type_indices = list(range(len(type_docs)))
+    if type_docs:
+        type_train_idx, type_test_idx, _, _ = _stratified_split(type_indices, type_labels)
+        type_train, type_test = len(type_train_idx), len(type_test_idx)
+    else:
+        type_train = type_test = 0
+
+    domain_indices = list(range(len(domain_docs)))
+    if domain_docs:
+        domain_train_idx, domain_test_idx, _, _ = _stratified_split(domain_indices, domain_labels)
+        domain_train, domain_test = len(domain_train_idx), len(domain_test_idx)
+    else:
+        domain_train = domain_test = 0
+
+    ground_truth_types = sorted(set(type_labels))
+    ground_truth_domains = sorted(set(domain_labels))
+
+    type_split_assignment = {}
+    for i in type_train_idx:
+        type_split_assignment[type_docs[i].id] = "TRAIN"
+    for i in type_test_idx:
+        type_split_assignment[type_docs[i].id] = "TEST"
+
+    domain_split_assignment = {}
+    for i in domain_train_idx:
+        domain_split_assignment[domain_docs[i].id] = "TRAIN"
+    for i in domain_test_idx:
+        domain_split_assignment[domain_docs[i].id] = "TEST"
+
+    def _by_class(labels, train_idx, test_idx):
+        counts = {}
+        for label in sorted(set(labels)):
+            n_train = sum(1 for i in train_idx if labels[i] == label)
+            n_test = sum(1 for i in test_idx if labels[i] == label)
+            counts[label] = {"train": n_train, "test": n_test}
+        return counts
+
+    type_split_by_class = _by_class(type_labels, type_train_idx, type_test_idx)
+    domain_split_by_class = _by_class(domain_labels, domain_train_idx, domain_test_idx)
+
+    return {
+        "total_datapoints": total,
+        "type_datapoints": len(type_docs),
+        "domain_datapoints": len(domain_docs),
+        "type_distribution": type_dist,
+        "domain_distribution": domain_dist,
+        "ground_truth_types": ground_truth_types,
+        "ground_truth_domains": ground_truth_domains,
+        "type_split": {"train": type_train, "test": type_test},
+        "domain_split": {"train": domain_train, "test": domain_test},
+        "split_ratio": {"train": 0.8, "test": 0.2},
+        "type_split_by_class": type_split_by_class,
+        "domain_split_by_class": domain_split_by_class,
+        "type_split_assignment": type_split_assignment,
+        "domain_split_assignment": domain_split_assignment,
+        "type_documents": [
+            {"id": d.id, "title": d.title, "category": d.category, "domain": d.domain}
+            for d in type_docs
+        ],
+        "domain_documents": [
+            {"id": d.id, "title": d.title, "category": d.category, "domain": d.domain}
+            for d in domain_docs
+        ],
+    }
+
+
+def _evaluation_metrics(y_test, predictions, unique_labels, total_samples, idx_train, idx_test):
+    """Build the evaluation metric dict from a held-out test split.
+
+    The accuracy, per-class correct/incorrect counts, confusion matrix, and
+    classification report are all computed ONLY from the held-out test
+    documents. Nothing in this function touches training data, so the reported
+    accuracy cannot be inflated by data leakage.
+    """
+    cm = confusion_matrix(y_test, predictions, labels=unique_labels)
+    report = classification_report(
+        y_test, predictions, labels=unique_labels, zero_division=0, output_dict=True
+    )
+
+    correct = int(sum(1 for a, b in zip(y_test, predictions) if a == b))
+    incorrect = len(y_test) - correct
+
+    per_class = {}
+    for label in unique_labels:
+        idx = [i for i, v in enumerate(y_test) if v == label]
+        n = len(idx)
+        c = int(sum(1 for i in idx if predictions[i] == label))
+        per_class[label] = {"total": n, "correct": c, "incorrect": n - c}
+
+    return {
+        "accuracy": round(correct / len(y_test), 4) if y_test else 0.0,
+        "accuracy_detail": {
+            "correct": correct,
+            "incorrect": incorrect,
+            "total_tested": len(y_test),
+            "computation": f"{correct} / {len(y_test)}",
+            "percent": round(correct / len(y_test) * 100, 2) if y_test else 0.0,
+        },
+        "per_class_test": per_class,
+        "precision": round(precision_score(y_test, predictions, average="macro", zero_division=0), 4),
+        "recall": round(recall_score(y_test, predictions, average="macro", zero_division=0), 4),
+        "f1": round(f1_score(y_test, predictions, average="macro", zero_division=0), 4),
+        "samples": total_samples,
+        "train_samples": len(idx_train),
+        "test_samples": len(idx_test),
+        "classes": unique_labels,
+        "confusion_matrix": cm.tolist(),
+        "classification_report": report,
+        "train_indices": idx_train,
+        "test_indices": idx_test,
+        "y_test": list(y_test),
+        "predictions": list(predictions),
+    }
+
+
+def _fit_on_train_only(texts, labels, kind):
+    """Stratified split BEFORE any fitting, then fit TF-IDF on the training set.
+
+    Doing the split first and fitting the vectorizer exclusively on the 80%
+    training documents guarantees the test documents never influence the TF-IDF
+    vocabulary, idf weights, or the classifier — eliminating data leakage.
+    """
+    indices = list(range(len(texts)))
+    idx_train, idx_test, y_train, y_test = _stratified_split(indices, labels)
+
+    raw = [_preprocess_text(t, kind) for t in texts]
+    vectorizer = _vectorizer()
+    X_train = vectorizer.fit_transform([raw[i] for i in idx_train])
+    X_test = vectorizer.transform([raw[i] for i in idx_test])
+
+    return vectorizer, X_train, X_test, idx_train, idx_test, y_train, y_test
+
+
+def train_naive_bayes_detailed(texts, labels):
+    """Train the document-type classifier and return full evaluation details.
+
+    The 80/20 stratified split is performed first and the TF-IDF vectorizer is
+    fitted ONLY on the training split, so evaluation is on truly unseen test
+    data (no data leakage). Returns train/test indices for verification.
+    """
+    vectorizer, X_train, X_test, idx_train, idx_test, y_train, y_test = (
+        _fit_on_train_only(texts, labels, "type")
+    )
+
+    model = MultinomialNB(alpha=1.0, fit_prior=True)
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    unique_labels = sorted(set(labels))
+    metrics = _evaluation_metrics(
+        y_test, predictions, unique_labels, len(texts), idx_train, idx_test
+    )
+
+    save_model(model, vectorizer, sorted(set(labels)), "type")
+    return model, vectorizer, metrics
+
+
+def train_domain_model_detailed(texts, labels):
+    """Train the domain classifier and return full evaluation details.
+
+    Same leakage-free procedure as train_naive_bayes_detailed: split first,
+    then fit TF-IDF on the training split only.
+    """
+    vectorizer, X_train, X_test, idx_train, idx_test, y_train, y_test = (
+        _fit_on_train_only(texts, labels, "domain")
+    )
+
+    model = MultinomialNB(alpha=1.0, fit_prior=False)
+    model.fit(X_train, y_train)
+
+    predictions = model.predict(X_test)
+    unique_labels = sorted(set(labels))
+    metrics = _evaluation_metrics(
+        y_test, predictions, unique_labels, len(texts), idx_train, idx_test
+    )
+
+    save_model(model, vectorizer, sorted(set(labels)), "domain")
+    return model, vectorizer, metrics
+
+
+def _stratified_split(indices, labels):
+    """Return train/test index lists using stratified 80/20 split."""
+    from collections import defaultdict
+
+    by_label = defaultdict(list)
+    for i, label in zip(indices, labels):
+        by_label[label].append(i)
+
+    import random
+    random.seed(42)
+
+    train_idx = []
+    test_idx = []
+    for label, items in by_label.items():
+        random.shuffle(items)
+        n_test = max(1, int(len(items) * 0.2))
+        test_idx.extend(items[:n_test])
+        train_idx.extend(items[n_test:])
+
+    y_train = [labels[i] for i in train_idx]
+    y_test = [labels[i] for i in test_idx]
+
+    return train_idx, test_idx, y_train, y_test
 
 
 # --- Document TYPE model (backwards-compatible public API) -----------------

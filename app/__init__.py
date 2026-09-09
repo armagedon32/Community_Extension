@@ -66,16 +66,56 @@ def create_app(config_class=Config):
 
     with app.app_context():
         db.create_all()
+        _ensure_schema(app)
         _bootstrap(app)
 
     return app
 
 
-def _bootstrap(app):
-    """Seed an empty database and warm the ML models on first boot.
+def _ensure_schema(app):
+    """Lightweight additive migration for new MLModel columns.
 
-    Idempotent: seeding only runs when no users exist, and models are only
-    trained once the persisted artifacts are missing.
+    Works for any SQLAlchemy dialect (SQLite, PostgreSQL, MySQL, ...).
+    Adds the new columns if they do not already exist, so existing databases
+    keep working after deployment without a full migration tool.
+    """
+    from sqlalchemy import inspect, text
+
+    new_cols = {
+        "dataset_size": ("INTEGER DEFAULT 0", "INTEGER DEFAULT 0"),
+        "class_distribution": ("TEXT", "TEXT"),
+        "model_version": ("VARCHAR(20)", "VARCHAR(20)"),
+        "train_samples": ("INTEGER DEFAULT 0", "INTEGER DEFAULT 0"),
+        "test_samples": ("INTEGER DEFAULT 0", "INTEGER DEFAULT 0"),
+        "split_ratio": ("VARCHAR(20) DEFAULT '80/20'", "VARCHAR(20) DEFAULT '80/20'"),
+        "activated_at": ("DATETIME", "TIMESTAMP"),
+        "training_duration": ("FLOAT", "FLOAT"),
+    }
+    dialect = db.engine.dialect.name
+
+    try:
+        existing = {c["name"] for c in inspect(db.engine).get_columns("ml_models")}
+    except Exception:
+        return
+
+    for col, (generic_ddl, pg_ddl) in new_cols.items():
+        if col in existing:
+            continue
+        if dialect == "postgresql":
+            stmt = f"ALTER TABLE ml_models ADD COLUMN IF NOT EXISTS {col} {pg_ddl}"
+        else:
+            stmt = f"ALTER TABLE ml_models ADD COLUMN {col} {generic_ddl}"
+        with db.engine.begin() as conn:
+            conn.execute(text(stmt))
+
+
+def _bootstrap(app):
+    """Seed an empty database on first boot.
+
+    Model training is NOT performed here. Training is an explicit, transparent
+    researcher action: Train Model -> Evaluate Model -> Activate Model. A safe
+    fallback in ``routes/ml._ensure_models`` creates a recorded model only when
+    no artifact exists and classification is actually requested.
     """
     from app.models import User
 
@@ -83,32 +123,3 @@ def _bootstrap(app):
         from seed import run_seed
         run_seed(reset=False, app=app)
         print("Bootstrap: database seeded.")
-
-    try:
-        from app.ml import engine
-        from app.models import Document
-
-        if engine.load_model("type")[0] is None:
-            docs = (
-                Document.query
-                .filter(Document.is_training.is_(True), Document.category.isnot(None))
-                .all()
-            )
-            if len(docs) >= 3:
-                texts = [d.content or "" for d in docs]
-                labels = [d.category for d in docs]
-                model, vectorizer, metrics = engine.train_naive_bayes(texts, labels)
-                engine.save_model(model, vectorizer, metrics["classes"], "type")
-            domain_docs = (
-                Document.query
-                .filter(Document.is_training.is_(True), Document.domain.isnot(None))
-                .all()
-            )
-            if len(domain_docs) >= 3:
-                d_texts = [d.content or "" for d in domain_docs]
-                d_labels = [d.domain for d in domain_docs]
-                d_model, d_vec, d_metrics = engine.train_domain_model(d_texts, d_labels)
-                engine.save_model(d_model, d_vec, d_metrics["classes"], "domain")
-            print("Bootstrap: ML models warmed.")
-    except Exception as exc:  # pragma: no cover - model training must not block boot
-        print(f"Bootstrap: ML models skipped ({exc}).")

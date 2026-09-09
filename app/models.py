@@ -268,6 +268,15 @@ class MLModel(db.Model):
     metrics_json = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    dataset_size = db.Column(db.Integer, default=0)
+    class_distribution = db.Column(db.Text, nullable=True)
+    model_version = db.Column(db.String(20), nullable=True)
+    train_samples = db.Column(db.Integer, default=0)
+    test_samples = db.Column(db.Integer, default=0)
+    split_ratio = db.Column(db.String(20), default="80/20")
+    activated_at = db.Column(db.DateTime, nullable=True)
+    training_duration = db.Column(db.Float, nullable=True)
+
     def __repr__(self):
         return f"<MLModel {self.name}>"
 

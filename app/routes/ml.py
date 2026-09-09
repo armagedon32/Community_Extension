@@ -230,66 +230,20 @@ def delete_document(doc_id):
     return redirect(url_for("ml.list_documents"))
 
 
-@ml_bp.route("/ml/train", methods=["POST"])
-@login_required
-def train_model():
-    from app.ml import engine
-
-    type_docs = (
-        Document.query
-        .filter(Document.is_training.is_(True), Document.category.isnot(None))
-        .all()
-    )
-    if len(type_docs) < 3:
-        flash("At least 3 labeled training documents are required.", "danger")
-        return redirect(url_for("ml.dashboard"))
-
-    # --- Document type model ---
-    texts = [doc.content or "" for doc in type_docs]
-    labels = [doc.category for doc in type_docs]
-    model, vectorizer, metrics = engine.train_naive_bayes(texts, labels)
-    engine.save_model(model, vectorizer, metrics["classes"], "type")
-
-    _record_model_run("Multinomial Naive Bayes - Document Type", metrics)
-
-    # --- Project category/domain model ---
-    domain_docs = (
-        Document.query
-        .filter(Document.is_training.is_(True), Document.domain.isnot(None))
-        .all()
-    )
-    if len(domain_docs) >= 3:
-        domain_texts = [doc.content or "" for doc in domain_docs]
-        domain_labels = [doc.domain for doc in domain_docs]
-        d_model, d_vec, d_metrics = engine.train_domain_model(domain_texts, domain_labels)
-        _record_model_run("Multinomial Naive Bayes - Project Category", d_metrics)
-        flash(
-            f"Models trained. Document Type: Accuracy {metrics['accuracy']:.0%} | "
-            f"Project Category: Accuracy {d_metrics['accuracy']:.0%}",
-            "success",
-        )
-        from app.routes.notifications import notify
-        notify(
-            f"ML models trained — Document Type accuracy {metrics['accuracy']:.0%}, Project Category accuracy {d_metrics['accuracy']:.0%}.",
-            category="success",
-            link=url_for("ml.dashboard"),
-        )
-    else:
-        flash(
-            f"Document type model trained (Accuracy: {metrics['accuracy']:.0%}). "
-            f"Add at least 3 documents with a project category/domain to train the second model.",
-            "success",
-        )
-        from app.routes.notifications import notify
-        notify(
-            f"Document type model trained — accuracy {metrics['accuracy']:.0%}.",
-            category="success",
-            link=url_for("ml.dashboard"),
-        )
-    return redirect(url_for("ml.dashboard"))
+def _next_version(name):
+    """Increment the model version based on existing MLModel runs."""
+    existing = MLModel.query.filter(MLModel.name == name).count()
+    return f"v{existing + 1}"
 
 
-def _record_model_run(name, metrics):
+def _record_model_run(name, metrics, dataset_summary=None, version=None):
+    """Record a trained (not yet activated) model run."""
+    dist = None
+    if dataset_summary:
+        if "Project Category" in name:
+            dist = json.dumps(dataset_summary.get("domain_distribution") or {})
+        else:
+            dist = json.dumps(dataset_summary.get("type_distribution") or {})
     model_run = MLModel(
         name=name,
         model_type="Multinomial Naive Bayes",
@@ -301,9 +255,139 @@ def _record_model_run(name, metrics):
         samples=metrics.get("samples", 0),
         classes=", ".join(metrics.get("classes") or []),
         metrics_json=json.dumps(metrics, default=str),
+        dataset_size=metrics.get("samples", 0),
+        class_distribution=dist,
+        model_version=version,
+        train_samples=metrics.get("train_samples"),
+        test_samples=metrics.get("test_samples"),
+        split_ratio="80/20",
     )
     db.session.add(model_run)
     db.session.commit()
+    return model_run
+
+
+@ml_bp.route("/ml/train", methods=["POST"])
+@login_required
+def train_model():
+    """Step 1 of the train->evaluate->activate workflow: TRAIN the models.
+
+    Trains both classifiers on the current labeled dataset but does NOT
+    activate them — the researcher reviews the evaluation first.
+    """
+    import time
+    from app.ml import engine
+
+    type_docs = (
+        Document.query
+        .filter(Document.is_training.is_(True), Document.category.isnot(None))
+        .all()
+    )
+    if len(type_docs) < 3:
+        flash("At least 3 labeled training documents are required.", "danger")
+        return redirect(url_for("ml.dashboard"))
+
+    summary = engine.get_dataset_summary(
+        Document.query.filter(Document.is_training.is_(True)).all()
+    )
+
+    # --- Document type model ---
+    texts = [doc.content or "" for doc in type_docs]
+    labels = [doc.category for doc in type_docs]
+    started = time.time()
+    model, vectorizer, metrics = engine.train_naive_bayes_detailed(texts, labels)
+    duration = round(time.time() - started, 2)
+    metrics["training_duration"] = duration
+    engine.save_model(model, vectorizer, metrics["classes"], "type")
+
+    _record_model_run(
+        "Multinomial Naive Bayes - Document Type",
+        metrics,
+        dataset_summary=summary,
+        version=_next_version("Multinomial Naive Bayes - Document Type"),
+    )
+
+    # --- Project category/domain model ---
+    domain_docs = (
+        Document.query
+        .filter(Document.is_training.is_(True), Document.domain.isnot(None))
+        .all()
+    )
+    d_metrics = None
+    if len(domain_docs) >= 3:
+        domain_texts = [doc.content or "" for doc in domain_docs]
+        domain_labels = [doc.domain for doc in domain_docs]
+        started = time.time()
+        d_model, d_vec, d_metrics = engine.train_domain_model_detailed(domain_texts, domain_labels)
+        d_metrics["training_duration"] = round(time.time() - started, 2)
+        _record_model_run(
+            "Multinomial Naive Bayes - Project Category",
+            d_metrics,
+            dataset_summary=summary,
+            version=_next_version("Multinomial Naive Bayes - Project Category"),
+        )
+
+    verdict = []
+    for nm, m in (("Document Type", metrics), ("Project Category", d_metrics)):
+        if m:
+            verdict.append(f"{nm}: Accuracy {m['accuracy']:.0%}, F1 {m['f1']:.0%}")
+
+    flash(
+        "Models trained and evaluated on the held-out 20% test set. Review the "
+        "results below, then click ACTIVATE to make the models live. "
+        + " | ".join(verdict),
+        "success",
+    )
+    from app.routes.notifications import notify
+    notify(
+        f"Models trained and evaluated (not yet activated): {' | '.join(verdict)}. Review then activate.",
+        category="info",
+        link=url_for("ml.dashboard"),
+    )
+    return redirect(url_for("ml.dashboard"))
+
+
+@ml_bp.route("/ml/activate/<int:model_id>", methods=["POST"])
+@login_required
+def activate_model(model_id):
+    """Step 3 of the workflow: ACTIVATE a single evaluated model."""
+    from datetime import datetime
+
+    model_run = db.get_or_404(MLModel, model_id)
+    if model_run.status != "Trained":
+        flash("This model is not in the 'Trained' state and cannot be activated.", "warning")
+        return redirect(url_for("ml.dashboard"))
+
+    # Archive any other ACTIVE model of the same family (type or domain), not
+    # the sibling classifier.
+    MLModel.query.filter(
+        MLModel.name == model_run.name
+    ).filter(MLModel.id != model_run.id).filter(MLModel.status.like("Active%")).update({"status": "Archived"})
+
+    model_run.status = "Active"
+    model_run.activated_at = datetime.utcnow()
+    db.session.commit()
+
+    flash(f"Model '{model_run.name}' ({model_run.model_version}) is now ACTIVE.", "success")
+    from app.routes.notifications import notify
+    notify(
+        f"Model '{model_run.name}' ({model_run.model_version}) activated.",
+        category="success",
+        link=url_for("ml.dashboard"),
+    )
+    return redirect(url_for("ml.dashboard"))
+
+
+@ml_bp.route("/ml/deactivate/<int:model_id>", methods=["POST"])
+@login_required
+def deactivate_model(model_id):
+    """Set a model back to 'Trained' (deactivate) without deleting its record."""
+    model_run = db.get_or_404(MLModel, model_id)
+    model_run.status = "Trained"
+    model_run.activated_at = None
+    db.session.commit()
+    flash(f"Model '{model_run.name}' deactivated.", "info")
+    return redirect(url_for("ml.dashboard"))
 
 
 @ml_bp.route("/ml/classify/<int:doc_id>", methods=["POST"])
@@ -330,8 +414,14 @@ def print_document(doc_id):
 def _ensure_models():
     """Train any missing classifier on-demand so classification always works.
 
+    Unlike the explicit Train step (which produces a full evaluation), this is a
+    fallback that only fires when NO trained model artifact exists, e.g. on a
+    fresh deployment after the bootstrap has populated labeled data. It records
+    the run in the MLModel registry for transparency.
+
     Returns True if both requested classifiers (type + domain) are ready.
     """
+    import time
     from app.ml import engine
 
     trained = {}
@@ -341,12 +431,25 @@ def _ensure_models():
         .all()
     )
     if engine.load_model("type")[0] is None and len(docs) >= 3:
-        model, vectorizer, metrics = engine.train_naive_bayes(
-            [d.content or "" for d in docs],
-            [d.category for d in docs],
-        )
-        engine.save_model(model, vectorizer, metrics["classes"], "type")
-        trained["type"] = True
+        strong = MLModel.query.filter(MLModel.name == "Multinomial Naive Bayes - Document Type").count()
+        if strong == 0:
+            summary = engine.get_dataset_summary(
+                Document.query.filter(Document.is_training.is_(True)).all()
+            )
+            started = time.time()
+            model, vectorizer, metrics = engine.train_naive_bayes_detailed(
+                [d.content or "" for d in docs],
+                [d.category for d in docs],
+            )
+            metrics["training_duration"] = round(time.time() - started, 2)
+            engine.save_model(model, vectorizer, metrics["classes"], "type")
+            _record_model_run(
+                "Multinomial Naive Bayes - Document Type",
+                metrics,
+                dataset_summary=summary,
+                version="v1",
+            )
+            trained["type"] = True
 
     domain_docs = (
         Document.query
@@ -354,12 +457,24 @@ def _ensure_models():
         .all()
     )
     if engine.load_model("domain")[0] is None and len(domain_docs) >= 3:
-        d_model, d_vec, d_metrics = engine.train_domain_model(
-            [d.content or "" for d in domain_docs],
-            [d.domain for d in domain_docs],
-        )
-        engine.save_model(d_model, d_vec, d_metrics["classes"], "domain")
-        trained["domain"] = True
+        strong_d = MLModel.query.filter(MLModel.name == "Multinomial Naive Bayes - Project Category").count()
+        if strong_d == 0:
+            summary = engine.get_dataset_summary(
+                Document.query.filter(Document.is_training.is_(True)).all()
+            )
+            started = time.time()
+            d_model, d_vec, d_metrics = engine.train_domain_model_detailed(
+                [d.content or "" for d in domain_docs],
+                [d.domain for d in domain_docs],
+            )
+            d_metrics["training_duration"] = round(time.time() - started, 2)
+            _record_model_run(
+                "Multinomial Naive Bayes - Project Category",
+                d_metrics,
+                dataset_summary=summary,
+                version="v1",
+            )
+            trained["domain"] = True
 
     return trained
 
@@ -393,10 +508,28 @@ def _classify_and_store(doc):
 @ml_bp.route("/ml")
 @login_required
 def dashboard():
+    from app.ml import engine
+
     models = MLModel.query.order_by(MLModel.created_at.desc()).all()
     labeled_count = Document.query.filter(Document.is_training.is_(True), Document.category.isnot(None)).count()
     domain_count = Document.query.filter(Document.is_training.is_(True), Document.domain.isnot(None)).count()
     doc_count = Document.query.count()
+
+    training_docs = Document.query.filter(Document.is_training.is_(True)).all()
+    dataset_summary = engine.get_dataset_summary(training_docs) if training_docs else None
+
+    viewer_documents = []
+    if dataset_summary:
+        seen = set()
+        type_split = dataset_summary.get("type_split_assignment") or {}
+        domain_split = dataset_summary.get("domain_split_assignment") or {}
+        for d in dataset_summary.get("type_documents", []) + dataset_summary.get("domain_documents", []):
+            doc_id = d["id"]
+            if doc_id not in seen:
+                seen.add(doc_id)
+                d["type_split"] = type_split.get(doc_id)
+                d["domain_split"] = domain_split.get(doc_id)
+                viewer_documents.append(d)
 
     def _chart(model):
         if model is None or not model.metrics_json:
@@ -412,24 +545,35 @@ def dashboard():
                 "confusion_matrix": m.get("confusion_matrix"),
                 "classes": m.get("classes"),
                 "test_samples": m.get("test_samples"),
+                "train_samples": m.get("train_samples"),
+                "accuracy_detail": m.get("accuracy_detail"),
+                "per_class_test": m.get("per_class_test"),
                 "classification_report": report,
             }
         except Exception:
             return None
 
-    type_model = next((m for m in models if "Document Type" in m.name), None)
-    domain_model = next((m for m in models if "Project Category" in m.name), None)
+    type_model = next((m for m in models if "Document Type" in m.name and m.status != "Archived"), None)
+    if type_model is None:
+        type_model = next((m for m in models if "Document Type" in m.name), None)
+    domain_model = next((m for m in models if "Project Category" in m.name and m.status != "Archived"), None)
+    if domain_model is None:
+        domain_model = next((m for m in models if "Project Category" in m.name), None)
 
     return render_template(
         "ml/index.html",
         models=models,
         latest=type_model,
         latest_domain=domain_model,
+        latest_any_type=next((m for m in models if "Document Type" in m.name), None),
+        latest_any_domain=next((m for m in models if "Project Category" in m.name), None),
         chart=_chart(type_model),
         chart_domain=_chart(domain_model),
         labeled=labeled_count,
         domain_count=domain_count,
         doc_count=doc_count,
+        dataset_summary=dataset_summary,
+        viewer_documents=viewer_documents,
         DOCUMENT_CATEGORIES=DOCUMENT_CATEGORIES,
         PROJECT_CATEGORIES=PROJECT_CATEGORIES,
     )

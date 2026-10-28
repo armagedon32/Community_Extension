@@ -257,7 +257,6 @@ def run_seed(reset=True, app=None):
         db.session.commit()
     
         # Expected deliverables and measurable targets from approved proposals
-        # (projects[1] = Community Health Caravan, projects[5] = Tree Planting Initiative)
         from app.ml.outcomes import INDICATOR_DEFS
         target_seed = [
             (1, "deliverable_completion", 85.0,
@@ -311,7 +310,6 @@ def run_seed(reset=True, app=None):
              "This activity design presents the schedule and logistics for the barangay health outreach. Free vitamin supplementation, blood sugar testing, and child immunization will be provided. The design specifies the venue, staffing requirements, and health protocols. The activity will run from 8 AM to 4 PM."),
             ("Feedback from Partner NGO", "Stakeholder Feedback",
              "The partner NGO provided feedback on the joint livelihood program. They noted strong community participation and effective coordination by the extension. They recommended improving the reporting system to track individual beneficiary progress and suggested quarterly review meetings to align program targets."),
-            # ---- Expanded corpus for a meaningful 80/20 train/test split ----
             ("Livelihood Skills Training Proposal", "Project Proposal",
              "This proposal requests funding to establish a livelihood skills training center serving rural households. The center will offer courses in basic bookkeeping, food packaging, handicrafts, and small business management. A feasibility study and budget breakdown are attached. The expected outcome is to reduce poverty indicators among member households within twelve months."),
             ("Water Access Project Proposal", "Project Proposal",
@@ -380,8 +378,8 @@ def run_seed(reset=True, app=None):
              "This Memorandum of Agreement is made and entered into by and between the LOCAL COLLEGE, hereinafter referred to as the FIRST PARTY, and the SCHOOLS DIVISION, hereinafter referred to as the SECOND PARTY. WITNESSETH: WHEREAS the FIRST PARTY is an academic institution engaged in instruction, research and extension; WHEREAS the parties desire to pool their resources for a literacy and tutorial program. NOW THEREFORE the parties agree as follows: undertake reading remediation, coordinate schedules, provide learning materials, and assign teaching interns. This Agreement is executed upon signing and remains in effect for the entire duration of the program. IN WITNESS WHEREOF the parties hereunto affix their signatures this day of the execution. This memorandum sets the scope and cooperation between the university and the education division."),
             ("Community Medical Mission MOA", "Memorandum of Agreement",
              "KNOW ALL MEN BY THESE PRESENTS: This Memorandum of Agreement executed by and between the COLLEGE, represented by its President as the FIRST PARTY, and the HEALTH TEAM, represented by its Coordinator as the SECOND PARTY for a free community medical mission. WHEREAS the parties intend to deliver health services, medical consultation, and free medicines to the community. NOW THEREFORE the parties covenant to provide volunteers, medical supplies, equipment, and the venue; free medical services shall be given to the recipient communities. The Agreement binds the parties to conduct the medical mission within the agreed schedule and to cover authorized officers for the outreach. Signed by the parties and attested by witnesses. The memorandum sets the obligations on both parties regarding the health outreach. Any provision of the agreement shall be enforced with the applicable rules."),
-    ("Livelihood Cooperative MOA", "Memorandum of Agreement",
-     "This Memorandum of Agreement is entered into by and between the LOCAL COLLEERATED the FIRST PARTY and the LIVELIHOOD COOPERATIVE as the SECOND PARTY for the establishment of a livelihood and seed capital program. WHEREAS the parties wish to extend financial assistance to community members, THIS AGREEMENT provides the framework for seed funding, establishes loan terms, repayment schedules, and financial management systems. The parties shall assist with capacity building and monitoring. Effective upon execution and for the term of the lending window. In witness whereof the sworn undersigned signatories execute this instrument to govern their collaboration."),
+            ("Livelihood Cooperative MOA", "Memorandum of Agreement",
+             "This Memorandum of Agreement is entered into by and between the LOCAL COLLEERATED the FIRST PARTY and the LIVELIHOOD COOPERATIVE as the SECOND PARTY for the establishment of a livelihood and seed capital program. WHEREAS the parties wish to extend financial assistance to community members, THIS AGREEMENT provides the framework for seed funding, establishes loan terms, repayment schedules, and financial management systems. The parties shall assist with capacity building and monitoring. Effective upon execution and for the term of the lending window. In witness whereof the sworn undersigned signatories execute this instrument to govern their collaboration."),
             ("Resident Survey Feedback", "Stakeholder Feedback",
              "Residents responded to the feedback form on their health outreach. They appreciated scheduling and vaccination but requested longer clinic hours and more supplies. Feedback responses will be consolidated for the next cycle of delivery and reporting."),
             ("Barangay Council Feedback", "Stakeholder Feedback",
@@ -394,7 +392,6 @@ def run_seed(reset=True, app=None):
              "Feedback from the gardeners praised the container gardening help and the seed donation. They requested more variety of seeds and an additional planting demonstration. This feedback affirms the community demand for continued backyard agriculture support."),
             ("Teacher Feedback on Tutoring", "Stakeholder Feedback",
              "Teachers responded that the tutoring visits improved learner confidence. They gave feedback that tutoring should continue during review months. Feedback also emphasized the value and the need for more tutors. This teacher input guides the tutoring schedule."),
-            # ---- Domain-specific corpus: clear Education / Livelihood / Governance / Environment / Health vocabulary ----
             ("Reading Curriculum Enhancement Design", "Activity Design",
              "The activity design proposes a reading curriculum enhancement for grade school classrooms. It covers lesson planning, reading comprehension drills, and teacher coaching. Teachers will use phonics and guided reading techniques. The curriculum plan is aligned with the education department standards for literacy."),
             ("Science Education Outreach Proposal", "Project Proposal",
@@ -436,6 +433,91 @@ def run_seed(reset=True, app=None):
                 uploaded_by=users[0].id,
             ))
         db.session.commit()
+
+        # --- NEW: Generate additional 534 docs to reach 600 total (66 + 534 = 600) ---
+        TARGET_TOTAL = 600
+        current_count = Document.query.count()
+        if current_count < TARGET_TOTAL:
+            needed = TARGET_TOTAL - current_count
+            print(f"Generating {needed} additional ML training documents to reach {TARGET_TOTAL}...")
+            # Sample contents per category for realistic ML training
+            CONTENT_TEMPLATES = {
+                "Project Proposal": [
+                    "This proposal seeks funding for {domain} program targeting {segment}. The program will {action}. Expected beneficiaries include {beneficiaries}. Budget breakdown and sustainability plan attached.",
+                    "Proposed {domain} initiative for community development. The project aims to {action} in {location}. Partnership with {partner} will ensure success. Monitoring framework included.",
+                ],
+                "Activity Design": [
+                    "The activity design outlines {domain} activity for {segment}. Schedule includes {action} at {location}. Facilitators from {partner} will lead. Materials and logistics detailed in design.",
+                    "Activity design for {domain} outreach in {location}. Participants: {beneficiaries}. Sessions on {topic} with hands-on {action}. Safety and evaluation protocols included.",
+                ],
+                "Accomplishment Report": [
+                    "This accomplishment report documents {domain} activities completed. {count} beneficiaries served by {volunteers} volunteers. Activities included {action}. All targets achieved within budget.",
+                    "Accomplishment report for {domain} program in {location}. Report covers {action}, participation data, and lessons learned. Recommendations for next cycle included.",
+                ],
+                "Monitoring and Evaluation Report": [
+                    "The monitoring and evaluation report assesses {domain} program implementation. Baseline and follow-up data on {topic} show progress. Evaluation recommends {action} for sustainability.",
+                    "M&E report tracking {domain} outcomes. Data on {beneficiaries} indicates {result}. Monitoring framework and corrective actions documented.",
+                ],
+                "Memorandum of Agreement": [
+                    "This memorandum of agreement establishes partnership for {domain} collaboration between university and {partner}. Parties agree to {action} and joint monitoring. Effective for two years.",
+                    "Memorandum of agreement for {domain} program with {partner} at {location}. Agreement covers {action}, resource sharing, and governance. Signed by both parties.",
+                ],
+                "Stakeholder Feedback": [
+                    "Stakeholder feedback on {domain} program in {location}. Respondents noted {result} from {action}. Suggestions for {topic} improvements included. Overall satisfaction positive.",
+                    "Feedback from {segment} on {domain} activities. Participants appreciated {action} but requested {topic}. Feedback will guide next {domain} planning cycle.",
+                ],
+            }
+            DOMAINS = ["Community Outreach", "Livelihood", "Health", "Education", "Environment", "Technology", "Governance"]
+            CATS = list(CONTENT_TEMPLATES.keys())
+            SEGMENTS_LOCAL = SEGMENTS
+            ACTIONS = ["conduct literacy classes and distribute modules", "provide medical screening and health education", "organize livelihood training and starter kits", "facilitate tree planting and coastal cleanup", "deliver digital literacy sessions", "conduct governance forums and citizen participation", "implement feeding and nutrition programs"]
+            LOCS = ["Barangay Wawandue", "Subic, Zambales", "Coastal Area Zone 2", "Upland Community", "Barangay Mangan-Vaca", "Municipal Covered Court"]
+            PARTNERS_LOCAL = ["LGU", "DepEd", "Rotary Club", "Municipal Health Office", "TESDA"]
+            TOPICS = ["reading comprehension", "maternal health", "waste segregation", "micro-entrepreneurship", "digital skills", "environmental conservation"]
+            
+            for i in range(needed):
+                cat = random.choice(CATS)
+                domain = random.choice(DOMAINS)
+                template = random.choice(CONTENT_TEMPLATES[cat])
+                content = template.format(
+                    domain=domain.lower(),
+                    segment=random.choice(SEGMENTS_LOCAL),
+                    action=random.choice(ACTIONS),
+                    beneficiaries=f"{random.randint(50,300)} {random.choice(SEGMENTS_LOCAL)}",
+                    location=random.choice(LOCS),
+                    partner=random.choice(PARTNERS_LOCAL),
+                    topic=random.choice(TOPICS),
+                    count=random.randint(30,500),
+                    volunteers=random.randint(5,80),
+                    result="improved outcomes and community participation",
+                )
+                # Ensure content has keywords for infer_domain to map correctly
+                if domain == "Health":
+                    content += " health medical clinic nutrition screening"
+                elif domain == "Education":
+                    content += " literacy education school teaching learning"
+                elif domain == "Livelihood":
+                    content += " livelihood income business skills training entrepreneurship"
+                elif domain == "Environment":
+                    content += " environment coastal cleanup tree planting conservation"
+                elif domain == "Technology":
+                    content += " technology digital computer training"
+                elif domain == "Governance":
+                    content += " governance municipal council local government barangay"
+                
+                db.session.add(Document(
+                    title=f"{domain} {cat} - Generated Doc {current_count + i + 1}",
+                    category=cat,
+                    domain=domain,
+                    content=content,
+                    is_training=True,
+                    uploaded_by=users[0].id,
+                ))
+                if (i+1) % 100 == 0:
+                    db.session.commit()
+                    print(f"Added {i+1}/{needed}...")
+            db.session.commit()
+            print(f"Total documents after generation: {Document.query.count()}")
     
         # Financial seed data
         for idx, p in enumerate(partners):
@@ -562,8 +644,7 @@ def run_seed(reset=True, app=None):
             ))
         db.session.commit()
 
-        # Efficiency comparison: timed trials for manual procedure vs developed system.
-        # Each indicator holds 3 recorded trials per method (observation data).
+        # Efficiency comparison
         efficiency_seed = [
             ("Registration / Encoding of New Partner Organization",
              "Time to register and encode a new partner organization record on file/manual logbook vs the system.",
@@ -606,9 +687,6 @@ def run_seed(reset=True, app=None):
                 ))
         db.session.commit()
 
-        # ISO/IEC 25010 perceived performance-efficiency (user-perception data).
-        # Kept separate from the objective timed trials; perception alone is not
-        # used as the basis for turnaround-time claims.
         perception_seed = [
             ("The system completes the recording and processing of extension records noticeably faster than the manual procedure.",),
             ("Records that I need are retrieved quickly whenever I request them.",),
@@ -637,6 +715,7 @@ def run_seed(reset=True, app=None):
 
         print("Seed data created successfully!")
         print("Default login: admin / password")
+        print(f"TOTAL DOCUMENTS: {Document.query.count()}")
 
 if __name__ == "__main__":
     run_seed()

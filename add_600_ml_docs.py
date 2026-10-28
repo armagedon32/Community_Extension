@@ -2,10 +2,16 @@ import random
 import textwrap
 from datetime import datetime, timedelta
 
+import os
 from app import create_app, db
 from app.models import Document, User, DOCUMENT_CATEGORIES, PROJECT_CATEGORIES
 
 random.seed(20251028)
+
+# Use pg8000 driver if connecting to Postgres
+db_url = os.environ.get('DATABASE_URL', '')
+if db_url.startswith('postgresql://'):
+    os.environ['DATABASE_URL'] = db_url.replace('postgresql://', 'postgresql+pg8000://', 1)
 
 app = create_app()
 ctx = app.app_context()

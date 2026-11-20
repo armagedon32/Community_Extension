@@ -92,6 +92,9 @@ def _train(texts, labels, kind):
     metrics = _evaluation_metrics(
         y_test, predictions, unique_labels, len(texts), idx_train, idx_test
     )
+    # Number of TF-IDF features fitted on the training split only; recorded so
+    # the dataset summary shown beside a confusion matrix matches this run.
+    metrics["features"] = len(vectorizer.vocabulary_)
 
     save_model(model, vectorizer, labels, kind)
     return model, vectorizer, metrics
@@ -368,6 +371,8 @@ def build_and_train(documents, kind):
 
     predictions = model.predict(X_test)
     metrics = _evaluation_metrics(y_test, predictions, meta["all_labels"], len(docs), idx_train, idx_test)
+    # TF-IDF vocabulary size from the 80% training split (not the test set).
+    metrics["features"] = len(vectorizer.vocabulary_)
 
     metrics["split_method"] = meta["split_method"]
     metrics["split_seed"] = meta["split_seed"]
@@ -478,6 +483,7 @@ def train_naive_bayes_detailed(texts, labels):
     metrics = _evaluation_metrics(
         y_test, predictions, unique_labels, len(texts), idx_train, idx_test
     )
+    metrics["features"] = len(vectorizer.vocabulary_)
 
     save_model(model, vectorizer, sorted(set(labels)), "type")
     return model, vectorizer, metrics
@@ -501,6 +507,7 @@ def train_domain_model_detailed(texts, labels):
     metrics = _evaluation_metrics(
         y_test, predictions, unique_labels, len(texts), idx_train, idx_test
     )
+    metrics["features"] = len(vectorizer.vocabulary_)
 
     save_model(model, vectorizer, sorted(set(labels)), "domain")
     return model, vectorizer, metrics

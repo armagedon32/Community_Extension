@@ -319,6 +319,50 @@
     {% endif %}
 </div>
 
+{# ===== Dataset & classifications used by this confusion matrix ===== #}
+{% if dataset_profile %}
+<div class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-database text-success fs-5"></i>
+        <h6 class="fw-bold mb-0">Dataset &amp; Classifications Used in This Confusion Matrix</h6>
+    </div>
+    <div class="table-responsive mb-3">
+        <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Dataset</th>
+                    <th class="text-center">#Features</th>
+                    <th class="text-center">#Samples</th>
+                    <th class="text-center">#Classes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="small">
+                        {{ dataset_profile.name }}
+                        <div class="text-muted" style="font-size:.72rem;">Ground-truth labels: {{ dataset_profile.label_field }}</div>
+                    </td>
+                    <td class="text-center">{{ dataset_profile.features if dataset_profile.features is not none else '—' }}</td>
+                    <td class="text-center">{{ dataset_profile.samples if dataset_profile.samples is not none else '—' }}</td>
+                    <td class="text-center">{{ dataset_profile.classes_count }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    <p class="small mb-2">
+        <strong>{{ dataset_profile.classes_label }} classified:</strong>
+        {% for cls in dataset_profile.classes %}<span class="badge text-bg-light border me-1 mb-1">{{ cls }}</span>{% else %}<span class="text-muted">—</span>{% endfor %}
+    </p>
+    <p class="small text-muted mb-0">
+        These are the labels used to train this model; they are the classes on the confusion matrix axes below.
+        <strong>#Features</strong> = TF-IDF terms fitted on the training split only,
+        <strong>#Samples</strong> = validated documents used in this run,
+        <strong>#Classes</strong> = number of distinct labels classified.
+        {% if dataset_profile.features_from_artifact %}#Features for this earlier run is taken from the current TF-IDF artifact.{% endif %}
+    </p>
+</div>
+{% endif %}
+
 {# ===== Confusion matrix ===== #}
 <div class="card p-4 mb-4">
     <div class="d-flex align-items-center gap-2 mb-3">

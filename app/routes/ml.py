@@ -568,11 +568,57 @@ def _metrics_view(model):
             "classification_report": report,
             "test_predictions": m.get("test_predictions"),
             "dataset": m.get("dataset"),
+            "features": m.get("features"),
             "split_method": m.get("split_method"),
             "dataset_id": m.get("dataset_id"),
         }
     except Exception:
         return None
+
+
+def _dataset_profile(model, view):
+    """Dataset/classification summary displayed beside a confusion matrix.
+
+    All values come from THIS model run's stored metrics, so the summary always
+    matches the matrix shown. Runs trained before the feature count was recorded
+    fall back to the currently persisted TF-IDF vectorizer artifact.
+    """
+    if not view:
+        return None
+
+    is_domain = "Project Category" in (model.name or "")
+    kind = "domain" if is_domain else "type"
+    labels = list(view.get("classes") or [])
+    dataset = view.get("dataset") or {}
+    validation = dataset.get("validation") or {}
+
+    samples = validation.get("accepted") or model.dataset_size
+    if not samples:
+        samples = (view.get("train_samples") or 0) + (view.get("test_samples") or 0)
+
+    features = view.get("features")
+    from_artifact = False
+    if not features:
+        try:
+            from app.ml import engine
+            _, vectorizer = engine.load_model(kind)
+            if vectorizer is not None:
+                features = len(vectorizer.vocabulary_)
+                from_artifact = True
+        except Exception:
+            features = None
+
+    return {
+        "name": ("Extension Documents (Project Category)" if is_domain
+                 else "Extension Documents (Document Type)"),
+        "label_field": "Document.domain" if is_domain else "Document.category",
+        "features": features,
+        "samples": samples,
+        "classes_count": len(labels),
+        "classes": labels,
+        "classes_label": "Project categories" if is_domain else "Document types",
+        "features_from_artifact": from_artifact,
+    }
 
 
 @ml_bp.route("/ml/model/<int:model_id>")
@@ -595,6 +641,7 @@ def model_detail(model_id):
         model=model_run,
         chart=view,
         dataset=view.get("dataset") if view else None,
+        dataset_profile=_dataset_profile(model_run, view),
         implied_by="Evaluation computed automatically from the actual "
                    "predictions on the held-out 20% testing dataset.",
         generated_at=datetime.now().strftime("%B %d, %Y %I:%M %p"),
@@ -634,6 +681,9 @@ def dashboard():
     if domain_model is None:
         domain_model = next((m for m in models if "Project Category" in m.name), None)
 
+    chart = _metrics_view(type_model)
+    chart_domain = _metrics_view(domain_model)
+
     return render_template(
         "ml/index.html",
         models=models,
@@ -641,8 +691,10 @@ def dashboard():
         latest_domain=domain_model,
         latest_any_type=next((m for m in models if "Document Type" in m.name), None),
         latest_any_domain=next((m for m in models if "Project Category" in m.name), None),
-        chart=_metrics_view(type_model),
-        chart_domain=_metrics_view(domain_model),
+        chart=chart,
+        chart_domain=chart_domain,
+        dataset_profile=_dataset_profile(type_model, chart),
+        domain_dataset_profile=_dataset_profile(domain_model, chart_domain),
         labeled=labeled_count,
         domain_count=domain_count,
         doc_count=doc_count,

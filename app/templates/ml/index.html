@@ -146,6 +146,42 @@
 {% endif %}
 {% endmacro %}
 
+{# ===== Dataset/classification summary shown beside each confusion matrix ===== #}
+{% macro dataset_summary_table(profile) %}
+{% if profile %}
+<div class="table-responsive mb-2">
+    <table class="table table-sm table-bordered align-middle mb-1">
+        <thead class="table-light">
+            <tr>
+                <th>Dataset</th>
+                <th class="text-center" style="width:78px;">#Features</th>
+                <th class="text-center" style="width:78px;">#Samples</th>
+                <th class="text-center" style="width:78px;">#Classes</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td class="small">
+                    {{ profile.name }}
+                    <div class="text-muted" style="font-size:.72rem;">Labels: {{ profile.label_field }}</div>
+                </td>
+                <td class="text-center small">{{ profile.features if profile.features is not none else '—' }}</td>
+                <td class="text-center small">{{ profile.samples if profile.samples is not none else '—' }}</td>
+                <td class="text-center small">{{ profile.classes_count }}</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+<div class="small text-muted mb-2">
+    <strong>{{ profile.classes_label }} classified:</strong>
+    {% for cls in profile.classes %}<span class="badge text-bg-light border me-1 mb-1">{{ cls }}</span>{% else %}<span>—</span>{% endfor %}
+</div>
+{% if profile.features_from_artifact %}
+<div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> #Features for this earlier run is taken from the current TF-IDF artifact.</div>
+{% endif %}
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 {% set ns = namespace(active_type=false, pending_type=false, active_domain=false, pending_domain=false) %}
 {% for m in models %}
@@ -460,6 +496,7 @@
                 {% if latest.training_duration %}<div>Training time: <strong>{{ latest.training_duration }}s</strong></div>{% endif %}
             </div>
             {{ accuracy_computation(chart) }}
+            {{ dataset_summary_table(dataset_profile) }}
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
             {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
@@ -510,6 +547,7 @@
                 {% if latest_domain.training_duration %}<div>Training time: <strong>{{ latest_domain.training_duration }}s</strong></div>{% endif %}
             </div>
             {{ accuracy_computation(chart_domain) }}
+            {{ dataset_summary_table(domain_dataset_profile) }}
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
             {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}

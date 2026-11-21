@@ -160,6 +160,16 @@
             </tr>
         </thead>
         <tbody>
+            {% if profile.per_class %}
+            {% for c in profile.per_class %}
+            <tr>
+                <td class="small">{{ c.label }}</td>
+                <td class="text-center small">—</td>
+                <td class="text-center small">{{ c.total }}</td>
+                <td class="text-center small">1</td>
+            </tr>
+            {% endfor %}
+            {% else %}
             <tr>
                 <td class="small">
                     {{ profile.name }}
@@ -169,13 +179,26 @@
                 <td class="text-center small">{{ profile.samples if profile.samples is not none else '—' }}</td>
                 <td class="text-center small">{{ profile.classes_count }}</td>
             </tr>
+            {% endif %}
         </tbody>
+        {% if profile.per_class %}
+        <tfoot class="table-light">
+            <tr class="fw-bold">
+                <td class="small">Total</td>
+                <td class="text-center small">{{ profile.features if profile.features is not none else '—' }}</td>
+                <td class="text-center small">{{ profile.per_class | sum(attribute='total') }}</td>
+                <td class="text-center small">{{ profile.classes_count }}</td>
+            </tr>
+        </tfoot>
+        {% endif %}
     </table>
 </div>
+{% if profile.per_class %}
 <div class="small text-muted mb-2">
-    <strong>{{ profile.classes_label }} classified:</strong>
-    {% for cls in profile.classes %}<span class="badge text-bg-light border me-1 mb-1">{{ cls }}</span>{% else %}<span>—</span>{% endfor %}
+    Each row is one {{ profile.classes_label.lower()[:-1] if profile.classes_label else 'class' }} used to train this model;
+    #Features is the model-wide TF-IDF vocabulary (shown in the Total row).
 </div>
+{% endif %}
 {% if profile.features_from_artifact %}
 <div class="small text-muted mb-2"><i class="bi bi-info-circle"></i> #Features for this earlier run is taken from the current TF-IDF artifact.</div>
 {% endif %}

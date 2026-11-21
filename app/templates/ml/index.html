@@ -1,10 +1,6 @@
 {% extends 'base.html' %}
 {% block title %}Machine Learning Lab - CELMIS{% endblock %}
 
-{% block head %}
-<script src="https://cdn.jsdelivr.net/npm/apexcharts@3.45.2/dist/apexcharts.min.js"></script>
-{% endblock %}
-
 {% macro interpretation_insights(chart) %}
 {% if chart and chart.classification_report %}
 {% set acc = (chart.accuracy or 0) * 100 %}
@@ -147,6 +143,55 @@
 {% endmacro %}
 
 {# ===== Dataset/classification summary shown beside each confusion matrix ===== #}
+{% macro confusion_matrix_table(chart, title) %}
+{% if chart and chart.confusion_matrix %}
+<h6 class="fw-bold small mb-2">{{ title }}</h6>
+<div class="small text-muted mb-2">
+    <span class="cm-swatch cm-zero"></span>0.00%
+    <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
+    <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
+    <span class="ms-2">(row-normalized %)</span>
+</div>
+<div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Actual \ Predicted</th>
+                {% for cls in chart.classes %}<th class="text-center small">{{ cls }}</th>{% endfor %}
+                <th class="text-center small">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for actual in chart.classes %}
+            {% set outer = loop %}
+            {% set row = chart.confusion_matrix[outer.index0] %}
+            {% set row_total = row | sum %}
+            <tr>
+                <td class="small fw-semibold">{{ actual }}</td>
+                {% for val in row %}
+                {% set pct = (val / row_total * 100) if row_total else 0 %}
+                <td class="text-center small cm-{{ 'zero' if pct == 0 else ('dark' if pct >= 50 else 'light') }}">
+                    {{ val }} <span class="small">({{ '%.2f'|format(pct) }}%)</span>
+                </td>
+                {% endfor %}
+                <td class="text-center small fw-bold">{{ row_total }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+<p class="small text-muted mt-2 mb-0">
+    Rows = actual labels, columns = predicted labels. Each cell shows <strong>count (row %)</strong>,
+    shaded by percentage: <span class="cm-swatch cm-zero"></span> 0.00% (white),
+    <span class="cm-swatch cm-light"></span> &gt;0–&lt;50% (light blue),
+    <span class="cm-swatch cm-dark"></span> &ge;50–100% (dark blue).
+    Diagonal cells are correct classifications; off-diagonal cells are misclassifications.
+</p>
+{% else %}
+<p class="text-muted mb-0 small">{{ title }} — confusion matrix will appear after training.</p>
+{% endif %}
+{% endmacro %}
+
 {% macro dataset_summary_table(profile) %}
 {% if profile %}
 <div class="table-responsive mb-2">
@@ -284,28 +329,9 @@
         <i class="bi bi-grid-3x3-gap text-primary fs-5"></i>
         <h5 class="fw-bold mb-0">Confusion Matrix of the Held-Out Test Set</h5>
     </div>
-    <div class="row g-4">
-        <div class="col-md-6">
-            <h6 class="fw-bold small mb-2">Document Type Model</h6>
-            <div class="small text-muted mb-2">
-                <span class="cm-swatch cm-zero"></span>0.00%
-                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
-                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
-                <span class="ms-2">(row-normalized %)</span>
-            </div>
-            {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0 small">Confusion matrix will appear after training.</p>{% endif %}
-        </div>
-        <div class="col-md-6">
-            <h6 class="fw-bold small mb-2">Project Category Model</h6>
-            <div class="small text-muted mb-2">
-                <span class="cm-swatch cm-zero"></span>0.00%
-                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
-                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
-                <span class="ms-2">(row-normalized %)</span>
-            </div>
-            {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0 small">Confusion matrix will appear after training.</p>{% endif %}
-        </div>
-    </div>
+    {{ confusion_matrix_table(chart, 'Document Type Model') }}
+    <hr>
+    {{ confusion_matrix_table(chart_domain, 'Project Category Model') }}
 </div>
 
 {# ===== Dataset & classifications — right below the confusion matrices ===== #}
@@ -760,57 +786,3 @@
 </div>
 {% endblock %}
 
-{% block scripts %}
-<script>
-function renderHeatmap(sel, classes, cm) {
-    if (!classes || !cm) return;
-    const rowTotals = cm.map(r => r.reduce((a, b) => a + b, 0));
-    // ApexCharts colorScale ranges are global, not per-row. Plot the
-    // row-normalized percentage so each cell is shaded by its own value.
-    const pct = (r, c) => rowTotals[r] ? (cm[r][c] / rowTotals[r]) * 100 : 0;
-    new ApexCharts(document.querySelector(sel), {
-        chart: { type: "heatmap", height: 300, toolbar: { show: false } },
-        series: classes.map((cls, i) => ({
-            name: cls,
-            data: cm[i].map((val, j) => ({
-                x: classes[j],
-                y: Number(pct(i, j).toFixed(2)),
-                count: val
-            }))
-        })),
-        plotOptions: {
-            heatmap: {
-                radius: 3,
-                enableShades: false,
-                colorScale: { ranges: [
-                    { from: 0, to: 0, color: "#ffffff" },
-                    { from: 0.01, to: 49.99, color: "#93c5fd" },
-                    { from: 50, to: 100, color: "#1a4d8f" }
-                ]}
-            }
-        },
-        dataLabels: {
-            enabled: true,
-            formatter: val => Number(val).toFixed(2) + "%",
-            style: { fontSize: "10px" }
-        },
-        tooltip: {
-            y: {
-                formatter: (val, { seriesIndex, dataPointIndex }) => {
-                    const count = cm[seriesIndex] ? cm[seriesIndex][dataPointIndex] : 0;
-                    return Number(val).toFixed(2) + "% (" + count + " docs)";
-                }
-            }
-        },
-        xaxis: { labels: { style: { fontSize: "10px" } } },
-        yaxis: { labels: { style: { fontSize: "10px" } } }
-    }).render();
-}
-{% if chart and chart.confusion_matrix %}
-renderHeatmap("#cmType", {{ chart.classes | tojson }}, {{ chart.confusion_matrix | tojson }});
-{% endif %}
-{% if chart_domain and chart_domain.confusion_matrix %}
-renderHeatmap("#cmDomain", {{ chart_domain.classes | tojson }}, {{ chart_domain.confusion_matrix | tojson }});
-{% endif %}
-</script>
-{% endblock %}

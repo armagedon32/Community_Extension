@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 
 from flask import Flask
@@ -156,12 +157,12 @@ def _ensure_schema(app):
 
 
 def _bootstrap(app):
-    """Seed an empty database on first boot.
+    """Seed an empty database on first boot and keep ML classes up to date.
 
-    Model training is NOT performed here. Training is an explicit, transparent
-    researcher action: Train Model -> Evaluate Model -> Activate Model. A safe
-    fallback in ``routes/ml._ensure_models`` creates a recorded model only when
-    no artifact exists and classification is actually requested.
+    Training is normally an explicit researcher action. The one exception is a
+    schema-level class expansion: when new document types/categories are added,
+    the idempotent top-up supplies their training documents and retrains the
+    affected classifier once so the evaluation tables show every class.
     """
     from app.models import User
 
@@ -169,3 +170,51 @@ def _bootstrap(app):
         from seed import run_seed
         run_seed(reset=False, app=app)
         print("Bootstrap: database seeded.")
+
+    from seed import ensure_training_classes
+    added = ensure_training_classes(app=app)
+    if added:
+        print(f"Bootstrap: added {added} training documents for new classes.")
+        _retrain_incomplete_models()
+
+
+def _retrain_incomplete_models():
+    """Retrain once when a model's latest run has fewer classes than configured.
+
+    Guarded by the class count, so it only fires after a new class is introduced
+    and never re-trains on ordinary restarts.
+    """
+    from app.ml import engine
+    from app.models import (
+        Document, MLModel, DOCUMENT_CATEGORIES, PROJECT_CATEGORIES,
+    )
+    from app.routes.ml import _attach_test_predictions, _next_version, _record_model_run
+
+    specs = (
+        ("type", "Multinomial Naive Bayes - Document Type",
+         Document.category, DOCUMENT_CATEGORIES),
+        ("domain", "Multinomial Naive Bayes - Project Category",
+         Document.domain, PROJECT_CATEGORIES),
+    )
+    for kind, name, field, configured in specs:
+        latest = (MLModel.query.filter(MLModel.name == name)
+                  .order_by(MLModel.id.desc()).first())
+        classes = []
+        if latest:
+            try:
+                classes = json.loads(latest.metrics_json or "{}").get("classes") or []
+            except (ValueError, TypeError):
+                classes = []
+        if len(classes) >= len(configured):
+            continue
+
+        docs = Document.query.filter(
+            Document.is_training.is_(True), field.isnot(None)
+        ).all()
+        if len(docs) < 3:
+            continue
+        model, vectorizer, metrics, used_docs = engine.build_and_train(docs, kind)
+        _attach_test_predictions(metrics, used_docs)
+        engine.save_model(model, vectorizer, metrics["classes"], kind)
+        _record_model_run(name, metrics, version=_next_version(name))
+        print(f"Bootstrap: retrained {name} with {len(metrics['classes'])} classes.")

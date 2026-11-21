@@ -28,7 +28,10 @@ from app.models import (
 )
 
 
-CATEGORIES = ["Community Outreach", "Livelihood", "Health", "Education", "Environment", "Technology"]
+CATEGORIES = [
+    "Community Outreach", "Livelihood", "Health", "Education", "Environment",
+    "Governance", "Technology", "Agriculture", "Water Sanitation", "Disaster Resilience",
+]
 SEGMENTS = ["Youth", "Senior Citizens", "Farmers", "Women-led Households", "Indigenous Peoples", "PWD", "Students"]
 STATUSES = ["Proposed", "Ongoing", "Completed"]
 ACTIVITY_STATUSES = ["Scheduled", "Ongoing", "Completed"]
@@ -466,8 +469,23 @@ def run_seed(reset=True, app=None):
                     "Stakeholder feedback on {domain} program in {location}. Respondents noted {result} from {action}. Suggestions for {topic} improvements included. Overall satisfaction positive.",
                     "Feedback from {segment} on {domain} activities. Participants appreciated {action} but requested {topic}. Feedback will guide next {domain} planning cycle.",
                 ],
+                "Work Plan": [
+                    "This work plan sets the {domain} schedule for {segment} at {location}. Activities include {action} with timelines, assigned responsibilities, and budget allocations.",
+                    "The work plan details quarterly milestones for the {domain} project with {partner}. It lists deliverables, target dates, resource requirements, and monitoring checkpoints.",
+                ],
+                "Training Manual": [
+                    "This training manual provides step-by-step instructions for {domain} activities. It includes learning objectives, facilitator guides, session plans, and participant exercises for {segment}.",
+                    "Training manual for {domain} capacity building with {partner}. Modules cover {topic}, hands-on demonstrations, assessment rubrics, and a post-training evaluation form.",
+                ],
+                "Policy Brief": [
+                    "This policy brief summarizes evidence on {domain} programs and recommends {action} for adoption by {partner}. It presents findings, cost implications, and implementation guidance.",
+                    "Policy brief on {domain} service delivery in {location}. The document outlines the problem, supporting data, recommended policy options, and expected impact on {segment}.",
+                ],
             }
-            DOMAINS = ["Community Outreach", "Livelihood", "Health", "Education", "Environment", "Technology", "Governance"]
+            DOMAINS = [
+                "Community Outreach", "Livelihood", "Health", "Education", "Environment",
+                "Governance", "Technology", "Agriculture", "Water Sanitation", "Disaster Resilience",
+            ]
             CATS = list(CONTENT_TEMPLATES.keys())
             SEGMENTS_LOCAL = SEGMENTS
             ACTIONS = ["conduct literacy classes and distribute modules", "provide medical screening and health education", "organize livelihood training and starter kits", "facilitate tree planting and coastal cleanup", "deliver digital literacy sessions", "conduct governance forums and citizen participation", "implement feeding and nutrition programs"]
@@ -716,6 +734,81 @@ def run_seed(reset=True, app=None):
         print("Seed data created successfully!")
         print("Default login: admin / password")
         print(f"TOTAL DOCUMENTS: {Document.query.count()}")
+
+# Minimum training examples guaranteed for every configured class. The
+# bootstrap calls ensure_training_classes() on each boot so an existing
+# deployment gains the new classes without a manual database migration.
+MIN_DOCS_PER_CLASS = 10
+
+CLASS_KEYWORDS = {
+    "Work Plan": "work plan schedule timeline milestones deliverables budget responsibilities",
+    "Training Manual": "training manual facilitator guide session modules exercises instructions",
+    "Policy Brief": "policy brief recommendation evidence findings adoption implementation",
+    "Agriculture": "agriculture farming crops livestock soil fertilizer harvest farmers",
+    "Water Sanitation": "water sanitation clean water hygiene drainage wells toilet facilities",
+    "Disaster Resilience": "disaster resilience preparedness evacuation relief risk reduction emergency",
+}
+
+_PHASES = [
+    "planning", "implementation", "monitoring", "evaluation", "reporting",
+    "capacity building", "resource mobilization", "coordination", "documentation", "follow-up",
+]
+_SITES = [
+    "Barangay Wawandue", "Subic, Zambales", "Coastal Area Zone 2",
+    "Upland Community", "Barangay Mangan-Vaca", "Municipal Covered Court",
+]
+_PARTNERS = ["LGU", "DepEd", "Rotary Club", "TESDA", "Municipal Health Office"]
+
+
+def ensure_training_classes(app=None):
+    """Top up training documents so every configured class has at least
+    MIN_DOCS_PER_CLASS examples. Idempotent: only missing documents are added.
+
+    Returns the number of documents created (0 when nothing was needed).
+    """
+    if app is None:
+        app = create_app()
+
+    from app.models import DOCUMENT_CATEGORIES, PROJECT_CATEGORIES
+
+    added = 0
+    with app.app_context():
+        admin = User.query.filter_by(username="admin").first()
+        if admin is None:
+            return 0
+
+        for kind, labels, field in (
+            ("document type", DOCUMENT_CATEGORIES, Document.category),
+            ("project category", PROJECT_CATEGORIES, Document.domain),
+        ):
+            for label in labels:
+                existing = Document.query.filter(
+                    Document.is_training.is_(True), field == label
+                ).count()
+                for index in range(max(0, MIN_DOCS_PER_CLASS - existing)):
+                    keywords = CLASS_KEYWORDS.get(label, label.lower())
+                    content = (
+                        f"{label} record {index + 1}: This {label.lower()} document describes the "
+                        f"{_PHASES[index % len(_PHASES)]} phase of a {kind} initiative in "
+                        f"{_SITES[index % len(_SITES)]}. {keywords.capitalize()}. Coordinated with "
+                        f"{_PARTNERS[index % len(_PARTNERS)]}, the activity engaged community members "
+                        f"and produced documented outputs. Findings, outputs, and lessons learned were "
+                        f"recorded for the extension office archive."
+                    )
+                    db.session.add(Document(
+                        title=f"{label} - Training Sample {index + 1}",
+                        filename=f"{label.lower().replace(' ', '_')}_{index + 1}.pdf",
+                        content=content,
+                        category=label if kind == "document type" else None,
+                        domain=label if kind == "project category" else None,
+                        is_training=True,
+                        uploaded_by=admin.id,
+                    ))
+                    added += 1
+        if added:
+            db.session.commit()
+    return added
+
 
 if __name__ == "__main__":
     run_seed()

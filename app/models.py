@@ -15,7 +15,10 @@ ROLES = [
 ]
 
 PROJECT_STATUSES = ["Proposed", "Ongoing", "Completed"]
-PROJECT_CATEGORIES = ["Community Outreach", "Livelihood", "Health", "Education", "Environment", "Governance", "Technology"]
+PROJECT_CATEGORIES = [
+    "Community Outreach", "Livelihood", "Health", "Education", "Environment",
+    "Governance", "Technology", "Agriculture", "Water Sanitation", "Disaster Resilience",
+]
 
 PARTNER_TYPES = ["LGU", "NGO", "Academic Institution", "Government Agency", "Private Sector", "Community Organization", "Church-Based", "Other"]
 
@@ -38,6 +41,9 @@ DOCUMENT_CATEGORIES = [
     "Memorandum of Agreement",
     "Stakeholder Feedback",
     "Other",
+    "Work Plan",
+    "Training Manual",
+    "Policy Brief",
 ]
 
 TRANSACTION_TYPES = ["Contribution", "Expense", "Allocation"]

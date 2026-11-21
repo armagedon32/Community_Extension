@@ -608,6 +608,38 @@ def _dataset_profile(model, view):
         except Exception:
             features = None
 
+    # Per-class counts prefer the distribution stored WITH this run. Older runs
+    # saved only the held-out predictions, so fall back to the confusion matrix
+    # rows (which are the exact test counts per class) and flag that fact.
+    distribution = dataset.get("distribution") or {}
+    test_only = not distribution
+    cm = view.get("confusion_matrix") or []
+    per_class = []
+    for index, label in enumerate(labels):
+        details = distribution.get(label) or {}
+        row = cm[index] if index < len(cm) else []
+        cm_total = sum(v for v in row if isinstance(v, (int, float)))
+        if test_only:
+            total, train, test = cm_total, None, cm_total
+        else:
+            total = details.get("total") or 0
+            train = details.get("train") or 0
+            test = details.get("test") or 0
+        per_class.append({"label": label, "total": total, "train": train, "test": test})
+
+    test_total = sum(c["test"] or 0 for c in per_class)
+    for item in per_class:
+        value = item["test"] if test_only else item["total"]
+        denom = test_total if test_only else samples
+        item["share"] = round(value / denom * 100, 1) if denom else 0
+    raw_total = sum((c["test"] if test_only else c["total"]) for c in per_class)
+    denom = test_total if test_only else samples
+    share_total = round(raw_total / denom * 100, 1) if denom else 0
+
+    dropped = validation.get("dropped") or {}
+    dropped_total = sum(v for v in dropped.values() if isinstance(v, (int, float)))
+    validation_logged = bool(validation)
+
     return {
         "name": ("Extension Documents (Project Category)" if is_domain
                  else "Extension Documents (Document Type)"),
@@ -618,6 +650,20 @@ def _dataset_profile(model, view):
         "classes": labels,
         "classes_label": "Project categories" if is_domain else "Document types",
         "features_from_artifact": from_artifact,
+        "per_class": per_class,
+        "per_class_test_only": test_only,
+        "share_total": share_total,
+        "dataset_id": dataset.get("dataset_id") or model.dataset_id,
+        "split_method": (dataset.get("split_method") or model.split_method
+                         or "Stratified 80/20 by category (random_state=42)"),
+        "train_count": dataset.get("train_count") or model.train_samples,
+        "test_count": dataset.get("test_count") or model.test_samples,
+        "validation_logged": validation_logged,
+        "validation": {
+            "scanned": validation.get("scanned", 0) if validation_logged else None,
+            "accepted": validation.get("accepted", samples) if validation_logged else samples,
+            "dropped": dropped_total if validation_logged else None,
+        },
     }
 
 

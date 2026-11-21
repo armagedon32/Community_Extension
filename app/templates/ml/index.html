@@ -462,7 +462,7 @@
                 <h6 class="fw-bold mb-0">Document Type Model</h6>
                 <div class="d-flex gap-2 align-items-center">
                     {% if ns.active_type %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_type %}<span class="badge text-bg-warning">Trained</span>{% endif %}
-                    {% if latest %}<a href="{{ url_for('ml.model_detail', model_id=latest.id) }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
+                    {% if latest %}<a href="{{ url_for('ml.model_detail', model_id=latest.id, _anchor='dataset-classifications') }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
                 </div>
             </div>
             <span class="text-muted small mb-3">Proposal / Activity Design / Accomplishment / M&amp;E / MOA / Feedback</span>
@@ -499,6 +499,12 @@
             {{ dataset_summary_table(dataset_profile) }}
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
+            <div class="small text-muted mb-2">
+                <span class="cm-swatch cm-zero"></span>0.00%
+                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
+                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
+                <span class="ms-2">(row-normalized %)</span>
+            </div>
             {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
             {{ per_class_metrics(chart) }}
             {{ interpretation_insights(chart) }}
@@ -513,7 +519,7 @@
                 <h6 class="fw-bold mb-0">Project Category Model</h6>
                 <div class="d-flex gap-2 align-items-center">
                     {% if ns.active_domain %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_domain %}<span class="badge text-bg-warning">Trained</span>{% endif %}
-                    {% if latest_domain %}<a href="{{ url_for('ml.model_detail', model_id=latest_domain.id) }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
+                    {% if latest_domain %}<a href="{{ url_for('ml.model_detail', model_id=latest_domain.id, _anchor='dataset-classifications') }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
                 </div>
             </div>
             <span class="text-muted small mb-3">Education / Livelihood / Governance / Environment / Health / etc.</span>
@@ -550,6 +556,12 @@
             {{ dataset_summary_table(domain_dataset_profile) }}
             <hr>
             <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
+            <div class="small text-muted mb-2">
+                <span class="cm-swatch cm-zero"></span>0.00%
+                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
+                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
+                <span class="ms-2">(row-normalized %)</span>
+            </div>
             {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
             {{ per_class_metrics(chart_domain) }}
             {{ interpretation_insights(chart_domain) }}
@@ -618,7 +630,7 @@
                             </td>
                             <td class="small text-muted">{{ m.created_at.strftime('%b %d, %Y') }}</td>
                             <td class="text-end">
-                                <a href="{{ url_for('ml.model_detail', model_id=m.id) }}" class="btn btn-sm btn-outline-secondary" title="View full quantitative evaluation"><i class="bi bi-eye"></i> View</a>
+                                <a href="{{ url_for('ml.model_detail', model_id=m.id, _anchor='dataset-classifications') }}" class="btn btn-sm btn-outline-secondary" title="View full quantitative evaluation"><i class="bi bi-eye"></i> View</a>
                                 {% if m.status == 'Trained' %}
                                 <form method="POST" action="{{ url_for('ml.activate_model', model_id=m.id) }}" class="d-inline">
                                     <button class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Activate</button>
@@ -650,29 +662,40 @@
 function renderHeatmap(sel, classes, cm) {
     if (!classes || !cm) return;
     const rowTotals = cm.map(r => r.reduce((a, b) => a + b, 0));
+    // ApexCharts colorScale ranges are global, not per-row. Plot the
+    // row-normalized percentage so each cell is shaded by its own value.
+    const pct = (r, c) => rowTotals[r] ? (cm[r][c] / rowTotals[r]) * 100 : 0;
     new ApexCharts(document.querySelector(sel), {
         chart: { type: "heatmap", height: 300, toolbar: { show: false } },
         series: classes.map((cls, i) => ({
             name: cls,
-            data: cm[i].map((val, j) => ({ x: classes[j], y: val }))
+            data: cm[i].map((val, j) => ({
+                x: classes[j],
+                y: Number(pct(i, j).toFixed(2)),
+                count: val
+            }))
         })),
         plotOptions: {
             heatmap: {
                 radius: 3,
+                enableShades: false,
                 colorScale: { ranges: [
-                    { from: 0, to: 0, color: "#f8fafc" },
-                    { from: 1, to: 2, color: "#93c5fd" },
-                    { from: 3, to: 5, color: "#3b82f6" },
-                    { from: 6, to: 999, color: "#1a4d8f" }
+                    { from: 0, to: 0, color: "#ffffff" },
+                    { from: 0.01, to: 49.99, color: "#93c5fd" },
+                    { from: 50, to: 100, color: "#1a4d8f" }
                 ]}
             }
         },
-        dataLabels: { enabled: true },
+        dataLabels: {
+            enabled: true,
+            formatter: val => Number(val).toFixed(2) + "%",
+            style: { fontSize: "10px" }
+        },
         tooltip: {
             y: {
-                formatter: (val, { seriesIndex }) => {
-                    const tot = rowTotals[seriesIndex] || 0;
-                    return val + (tot ? " (" + ((val / tot) * 100).toFixed(1) + "%)" : "");
+                formatter: (val, { seriesIndex, dataPointIndex }) => {
+                    const count = cm[seriesIndex] ? cm[seriesIndex][dataPointIndex] : 0;
+                    return Number(val).toFixed(2) + "% (" + count + " docs)";
                 }
             }
         },

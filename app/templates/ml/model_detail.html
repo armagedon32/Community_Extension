@@ -46,6 +46,148 @@
     </div>
 </div>
 
+{# ===== Dataset & classifications used by this confusion matrix ===== #}
+{% if dataset_profile %}
+<div id="dataset-classifications" class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-database text-success fs-5"></i>
+        <h6 class="fw-bold mb-0">Dataset &amp; Classifications Used in This Confusion Matrix</h6>
+    </div>
+
+    {# Reference summary table #}
+    <div class="table-responsive mb-3">
+        <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Dataset</th>
+                    <th class="text-center">#Features</th>
+                    <th class="text-center">#Samples</th>
+                    <th class="text-center">#Classes</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="small">
+                        {{ dataset_profile.name }}
+                        <div class="text-muted" style="font-size:.72rem;">Ground-truth labels: {{ dataset_profile.label_field }}</div>
+                    </td>
+                    <td class="text-center">{{ dataset_profile.features if dataset_profile.features is not none else '—' }}</td>
+                    <td class="text-center">{{ dataset_profile.samples if dataset_profile.samples is not none else '—' }}</td>
+                    <td class="text-center">{{ dataset_profile.classes_count }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    {# Run metadata #}
+    <div class="row g-2 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="border rounded p-2 h-100">
+                <div class="text-muted small">Dataset ID</div>
+                <div class="small fw-semibold text-break" style="font-size:.78rem;">{{ dataset_profile.dataset_id or '—' }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="border rounded p-2 h-100">
+                <div class="text-muted small">Split Method</div>
+                <div class="small fw-semibold" style="font-size:.78rem;">{{ dataset_profile.split_method or '—' }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="border rounded p-2 h-100">
+                <div class="text-muted small">Train Samples</div>
+                <div class="fw-semibold">{{ dataset_profile.train_count if dataset_profile.train_count is not none else '—' }}</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="border rounded p-2 h-100">
+                <div class="text-muted small">Test Samples</div>
+                <div class="fw-semibold">{{ dataset_profile.test_count if dataset_profile.test_count is not none else '—' }}</div>
+            </div>
+        </div>
+    </div>
+
+    {# Per-class distribution #}
+    {% if dataset_profile.per_class %}
+    <h6 class="fw-bold small mb-2">{{ dataset_profile.classes_label }} used to train this model</h6>
+    <div class="table-responsive mb-2">
+        <table class="table table-sm table-bordered align-middle mb-0">
+            <thead class="table-light">
+                <tr>
+                    <th>Class / Label</th>
+                    <th class="text-center">#{{ 'Test Samples' if dataset_profile.per_class_test_only else 'Samples' }}</th>
+                    <th class="text-center">Train</th>
+                    <th class="text-center">Test</th>
+                    <th class="text-center">Share %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in dataset_profile.per_class %}
+                <tr>
+                    <td class="small">{{ c.label }}</td>
+                    <td class="text-center small">{{ c.total }}</td>
+                    <td class="text-center small">{{ c.train if c.train is not none else '—' }}</td>
+                    <td class="text-center small">{{ c.test }}</td>
+                    <td class="text-center small">{{ '%.1f'|format(c.share) }}%</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+                <tr class="fw-bold">
+                    <td class="small">Total</td>
+                    <td class="text-center small">{{ dataset_profile.per_class | sum(attribute='total') }}</td>
+                    <td class="text-center small">{{ '—' if dataset_profile.per_class_test_only else (dataset_profile.per_class | sum(attribute='train')) }}</td>
+                    <td class="text-center small">{{ dataset_profile.per_class | sum(attribute='test') }}</td>
+                    <td class="text-center small">{{ '%.1f'|format(dataset_profile.share_total) }}%</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% if dataset_profile.per_class_test_only %}
+    <p class="small text-muted mb-3">
+        This earlier run stored only the held-out predictions, so the counts above are taken from the
+        confusion matrix rows (test set); the train-split breakdown was not recorded.
+    </p>
+    {% endif %}
+    {% else %}
+    <p class="small mb-2">
+        <strong>{{ dataset_profile.classes_label }} classified:</strong>
+        {% for cls in dataset_profile.classes %}<span class="badge text-bg-light border me-1 mb-1">{{ cls }}</span>{% else %}<span class="text-muted">—</span>{% endfor %}
+    </p>
+    {% endif %}
+
+    {# Validation summary #}
+    <div class="small border rounded px-3 py-2 bg-light mb-3">
+        <strong>Validation summary:</strong>
+        {% if dataset_profile.validation_logged %}
+        {{ dataset_profile.validation.scanned or 0 }} documents scanned &rarr;
+        {{ dataset_profile.validation.accepted or 0 }} accepted &rarr;
+        {{ dataset_profile.validation.dropped or 0 }} dropped (empty content / duplicates / invalid labels).
+        {% else %}
+        Validation details were not stored for this earlier run.
+        {{ dataset_profile.validation.accepted or 0 }} accepted documents (dataset size).
+        {% endif %}
+    </div>
+
+    {# Shading legend #}
+    <div class="small text-muted mb-2">
+        Matrix shading key:
+        <span class="cm-swatch cm-zero"></span> 0.00% (white)
+        <span class="cm-swatch cm-light ms-3"></span> &gt;0–&lt;50% (light blue)
+        <span class="cm-swatch cm-dark ms-3"></span> &ge;50–100% (dark blue)
+        <span class="ms-2">(row-normalized %)</span>
+    </div>
+
+    <p class="small text-muted mb-0">
+        These are the labels used to train this model; they are the classes on the confusion matrix axes below.
+        <strong>#Features</strong> = TF-IDF terms fitted on the training split only,
+        <strong>#Samples</strong> = validated documents used in this run,
+        <strong>#Classes</strong> = number of distinct labels classified.
+        {% if dataset_profile.features_from_artifact %}#Features for this earlier run is taken from the current TF-IDF artifact.{% endif %}
+    </p>
+</div>
+{% endif %}
+
 {# ===== Sample counts + formulas ===== #}
 <div class="row g-3 mb-4">
     <div class="col-lg-4">
@@ -319,50 +461,6 @@
     {% endif %}
 </div>
 
-{# ===== Dataset & classifications used by this confusion matrix ===== #}
-{% if dataset_profile %}
-<div class="card p-4 mb-4">
-    <div class="d-flex align-items-center gap-2 mb-3">
-        <i class="bi bi-database text-success fs-5"></i>
-        <h6 class="fw-bold mb-0">Dataset &amp; Classifications Used in This Confusion Matrix</h6>
-    </div>
-    <div class="table-responsive mb-3">
-        <table class="table table-sm table-bordered align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Dataset</th>
-                    <th class="text-center">#Features</th>
-                    <th class="text-center">#Samples</th>
-                    <th class="text-center">#Classes</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td class="small">
-                        {{ dataset_profile.name }}
-                        <div class="text-muted" style="font-size:.72rem;">Ground-truth labels: {{ dataset_profile.label_field }}</div>
-                    </td>
-                    <td class="text-center">{{ dataset_profile.features if dataset_profile.features is not none else '—' }}</td>
-                    <td class="text-center">{{ dataset_profile.samples if dataset_profile.samples is not none else '—' }}</td>
-                    <td class="text-center">{{ dataset_profile.classes_count }}</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    <p class="small mb-2">
-        <strong>{{ dataset_profile.classes_label }} classified:</strong>
-        {% for cls in dataset_profile.classes %}<span class="badge text-bg-light border me-1 mb-1">{{ cls }}</span>{% else %}<span class="text-muted">—</span>{% endfor %}
-    </p>
-    <p class="small text-muted mb-0">
-        These are the labels used to train this model; they are the classes on the confusion matrix axes below.
-        <strong>#Features</strong> = TF-IDF terms fitted on the training split only,
-        <strong>#Samples</strong> = validated documents used in this run,
-        <strong>#Classes</strong> = number of distinct labels classified.
-        {% if dataset_profile.features_from_artifact %}#Features for this earlier run is taken from the current TF-IDF artifact.{% endif %}
-    </p>
-</div>
-{% endif %}
-
 {# ===== Confusion matrix ===== #}
 <div class="card p-4 mb-4">
     <div class="d-flex align-items-center gap-2 mb-3">
@@ -372,6 +470,12 @@
     {% if chart and chart.confusion_matrix %}
     <div class="row g-3">
         <div class="col-lg-6">
+            <div class="small text-muted mb-2">
+                <span class="cm-swatch cm-zero"></span>0.00%
+                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
+                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
+                <span class="ms-2">(row-normalized %)</span>
+            </div>
             <div id="cmHeatmap"></div>
         </div>
         <div class="col-lg-6">
@@ -388,18 +492,27 @@
                         {% for actual in chart.classes %}
                         {% set outer = loop %}
                         {% set row = chart.confusion_matrix[outer.index0] %}
+                        {% set row_total = row | sum %}
                         <tr>
                             <td class="small fw-semibold">{{ actual }}</td>
-                            {% for val in row %}<td class="text-center small {% if loop.index0 == outer.index0 %}bg-success bg-opacity-25 fw-bold{% endif %}">{{ val }}</td>{% endfor %}
-                            <td class="text-center small fw-bold">{{ row | sum }}</td>
+                            {% for val in row %}
+                            {% set pct = (val / row_total * 100) if row_total else 0 %}
+                            <td class="text-center small cm-{{ 'zero' if pct == 0 else ('dark' if pct >= 50 else 'light') }}">
+                                {{ val }} <span class="small">({{ '%.2f'|format(pct) }}%)</span>
+                            </td>
+                            {% endfor %}
+                            <td class="text-center small fw-bold">{{ row_total }}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
             <p class="small text-muted mt-2 mb-0">
-                Rows = actual labels, columns = predicted labels. The diagonal (highlighted) holds the correct
-                classifications; off-diagonal cells are misclassifications between the two labels.
+                Rows = actual labels, columns = predicted labels. Each cell shows <strong>count (row %)</strong>,
+                shaded by percentage: <span class="cm-swatch cm-zero"></span> 0.00% (white),
+                <span class="cm-swatch cm-light"></span> &gt;0–&lt;50% (light blue),
+                <span class="cm-swatch cm-dark"></span> &ge;50–100% (dark blue).
+                Diagonal cells are correct classifications; off-diagonal cells are misclassifications.
             </p>
         </div>
     </div>
@@ -480,29 +593,39 @@
     const classes = {{ chart.classes | tojson }};
     const cm = {{ chart.confusion_matrix | tojson }};
     const rowTotals = cm.map(r => r.reduce((a, b) => a + b, 0));
+    // Shade by row-normalized percentage (ApexCharts ranges are global).
+    const pct = (r, c) => rowTotals[r] ? (cm[r][c] / rowTotals[r]) * 100 : 0;
     new ApexCharts(document.querySelector("#cmHeatmap"), {
         chart: { type: "heatmap", height: 320, toolbar: { show: false } },
         series: classes.map((cls, i) => ({
             name: cls,
-            data: cm[i].map((val, j) => ({ x: classes[j], y: val }))
+            data: cm[i].map((val, j) => ({
+                x: classes[j],
+                y: Number(pct(i, j).toFixed(2)),
+                count: val
+            }))
         })),
         plotOptions: {
             heatmap: {
                 radius: 3,
+                enableShades: false,
                 colorScale: { ranges: [
-                    { from: 0, to: 0, color: "#f8fafc" },
-                    { from: 1, to: 2, color: "#93c5fd" },
-                    { from: 3, to: 5, color: "#3b82f6" },
-                    { from: 6, to: 999, color: "#1a4d8f" }
+                    { from: 0, to: 0, color: "#ffffff" },
+                    { from: 0.01, to: 49.99, color: "#93c5fd" },
+                    { from: 50, to: 100, color: "#1a4d8f" }
                 ]}
             }
         },
-        dataLabels: { enabled: true },
+        dataLabels: {
+            enabled: true,
+            formatter: val => Number(val).toFixed(2) + "%",
+            style: { fontSize: "10px" }
+        },
         tooltip: {
             y: {
-                formatter: (val, { seriesIndex }) => {
-                    const tot = rowTotals[seriesIndex] || 0;
-                    return val + (tot ? " (" + ((val / tot) * 100).toFixed(1) + "%)" : "");
+                formatter: (val, { seriesIndex, dataPointIndex }) => {
+                    const count = cm[seriesIndex] ? cm[seriesIndex][dataPointIndex] : 0;
+                    return Number(val).toFixed(2) + "% (" + count + " docs)";
                 }
             }
         },

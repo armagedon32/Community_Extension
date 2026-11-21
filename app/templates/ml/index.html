@@ -182,6 +182,52 @@
 {% endif %}
 {% endmacro %}
 
+{# ===== Per-class table shown at the front of the ML Lab page ===== #}
+{% macro dataset_per_class_table(profile) %}
+{% if profile and profile.per_class %}
+<div class="table-responsive">
+    <table class="table table-sm table-bordered align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Class / Label</th>
+                <th class="text-center">#{{ 'Test Samples' if profile.per_class_test_only else 'Samples' }}</th>
+                <th class="text-center">Train</th>
+                <th class="text-center">Test</th>
+                <th class="text-center">Share %</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in profile.per_class %}
+            <tr>
+                <td class="small">{{ c.label }}</td>
+                <td class="text-center small">{{ c.total }}</td>
+                <td class="text-center small">{{ c.train if c.train is not none else '—' }}</td>
+                <td class="text-center small">{{ c.test }}</td>
+                <td class="text-center small">{{ '%.1f'|format(c.share) }}%</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot class="table-light">
+            <tr class="fw-bold">
+                <td class="small">Total</td>
+                <td class="text-center small">{{ profile.per_class | sum(attribute='total') }}</td>
+                <td class="text-center small">{{ '—' if profile.per_class_test_only else (profile.per_class | sum(attribute='train')) }}</td>
+                <td class="text-center small">{{ profile.per_class | sum(attribute='test') }}</td>
+                <td class="text-center small">{{ '%.1f'|format(profile.share_total) }}%</td>
+            </tr>
+        </tfoot>
+    </table>
+</div>
+{% if profile.per_class_test_only %}
+<div class="small text-muted mt-2 mb-0">
+    <i class="bi bi-info-circle"></i> Counts come from the confusion matrix rows (test set); the train breakdown was not recorded for this earlier run.
+</div>
+{% endif %}
+{% else %}
+<p class="text-muted small mb-0">No trained model yet — train a model to see the classes used.</p>
+{% endif %}
+{% endmacro %}
+
 {% block content %}
 {% set ns = namespace(active_type=false, pending_type=false, active_domain=false, pending_domain=false) %}
 {% for m in models %}
@@ -206,6 +252,26 @@
         <form method="POST" action="{{ url_for('ml.train_model') }}" onsubmit="this.querySelector('button').disabled=true;">
             <button type="submit" class="btn btn-primary"><i class="bi bi-gear"></i> 1. Train Naive Bayes</button>
         </form>
+    </div>
+</div>
+
+{# ===== Dataset & classifications — shown first in the ML Lab ===== #}
+<div id="dataset-classifications" class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-database text-success fs-5"></i>
+        <h5 class="fw-bold mb-0">Dataset &amp; Classifications Used in This Confusion Matrix</h5>
+    </div>
+    <div class="row g-4">
+        <div class="col-md-6">
+            <h6 class="fw-bold small mb-2">Document types used to train this model</h6>
+            {{ dataset_summary_table(dataset_profile) }}
+            {{ dataset_per_class_table(dataset_profile) }}
+        </div>
+        <div class="col-md-6">
+            <h6 class="fw-bold small mb-2">Project categories used to train this model</h6>
+            {{ dataset_summary_table(domain_dataset_profile) }}
+            {{ dataset_per_class_table(domain_dataset_profile) }}
+        </div>
     </div>
 </div>
 
@@ -462,7 +528,7 @@
                 <h6 class="fw-bold mb-0">Document Type Model</h6>
                 <div class="d-flex gap-2 align-items-center">
                     {% if ns.active_type %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_type %}<span class="badge text-bg-warning">Trained</span>{% endif %}
-                    {% if latest %}<a href="{{ url_for('ml.model_detail', model_id=latest.id, _anchor='dataset-classifications') }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
+                    {% if latest %}<a href="{{ url_for('ml.model_detail', model_id=latest.id) }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
                 </div>
             </div>
             <span class="text-muted small mb-3">Proposal / Activity Design / Accomplishment / M&amp;E / MOA / Feedback</span>
@@ -519,7 +585,7 @@
                 <h6 class="fw-bold mb-0">Project Category Model</h6>
                 <div class="d-flex gap-2 align-items-center">
                     {% if ns.active_domain %}<span class="badge text-bg-success">Active</span>{% elif ns.pending_domain %}<span class="badge text-bg-warning">Trained</span>{% endif %}
-                    {% if latest_domain %}<a href="{{ url_for('ml.model_detail', model_id=latest_domain.id, _anchor='dataset-classifications') }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
+                    {% if latest_domain %}<a href="{{ url_for('ml.model_detail', model_id=latest_domain.id) }}" class="btn btn-sm btn-outline-primary no-print"><i class="bi bi-clipboard2-data"></i> Full Evaluation</a>{% endif %}
                 </div>
             </div>
             <span class="text-muted small mb-3">Education / Livelihood / Governance / Environment / Health / etc.</span>
@@ -630,7 +696,7 @@
                             </td>
                             <td class="small text-muted">{{ m.created_at.strftime('%b %d, %Y') }}</td>
                             <td class="text-end">
-                                <a href="{{ url_for('ml.model_detail', model_id=m.id, _anchor='dataset-classifications') }}" class="btn btn-sm btn-outline-secondary" title="View full quantitative evaluation"><i class="bi bi-eye"></i> View</a>
+                                <a href="{{ url_for('ml.model_detail', model_id=m.id) }}" class="btn btn-sm btn-outline-secondary" title="View full quantitative evaluation"><i class="bi bi-eye"></i> View</a>
                                 {% if m.status == 'Trained' %}
                                 <form method="POST" action="{{ url_for('ml.activate_model', model_id=m.id) }}" class="d-inline">
                                     <button class="btn btn-sm btn-success"><i class="bi bi-play-fill"></i> Activate</button>

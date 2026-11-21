@@ -107,54 +107,10 @@
         </div>
     </div>
 
-    {# Per-class distribution #}
-    {% if dataset_profile.per_class %}
-    <h6 class="fw-bold small mb-2">{{ dataset_profile.classes_label }} used to train this model</h6>
-    <div class="table-responsive mb-2">
-        <table class="table table-sm table-bordered align-middle mb-0">
-            <thead class="table-light">
-                <tr>
-                    <th>Class / Label</th>
-                    <th class="text-center">#{{ 'Test Samples' if dataset_profile.per_class_test_only else 'Samples' }}</th>
-                    <th class="text-center">Train</th>
-                    <th class="text-center">Test</th>
-                    <th class="text-center">Share %</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for c in dataset_profile.per_class %}
-                <tr>
-                    <td class="small">{{ c.label }}</td>
-                    <td class="text-center small">{{ c.total }}</td>
-                    <td class="text-center small">{{ c.train if c.train is not none else '—' }}</td>
-                    <td class="text-center small">{{ c.test }}</td>
-                    <td class="text-center small">{{ '%.1f'|format(c.share) }}%</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-            <tfoot class="table-light">
-                <tr class="fw-bold">
-                    <td class="small">Total</td>
-                    <td class="text-center small">{{ dataset_profile.per_class | sum(attribute='total') }}</td>
-                    <td class="text-center small">{{ '—' if dataset_profile.per_class_test_only else (dataset_profile.per_class | sum(attribute='train')) }}</td>
-                    <td class="text-center small">{{ dataset_profile.per_class | sum(attribute='test') }}</td>
-                    <td class="text-center small">{{ '%.1f'|format(dataset_profile.share_total) }}%</td>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-    {% if dataset_profile.per_class_test_only %}
-    <p class="small text-muted mb-3">
-        This earlier run stored only the held-out predictions, so the counts above are taken from the
-        confusion matrix rows (test set); the train-split breakdown was not recorded.
-    </p>
-    {% endif %}
-    {% else %}
     <p class="small mb-2">
         <strong>{{ dataset_profile.classes_label }} classified:</strong>
         {% for cls in dataset_profile.classes %}<span class="badge text-bg-light border me-1 mb-1">{{ cls }}</span>{% else %}<span class="text-muted">—</span>{% endfor %}
     </p>
-    {% endif %}
 
     {# Validation summary #}
     <div class="small border rounded px-3 py-2 bg-light mb-3">

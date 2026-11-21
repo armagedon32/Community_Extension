@@ -278,7 +278,37 @@
     </div>
 </div>
 
-{# ===== Dataset & classifications — shown first in the ML Lab ===== #}
+{# ===== Confusion matrices — shown first so panelists see them immediately ===== #}
+<div id="front-confusion-matrices" class="card p-4 mb-4">
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <i class="bi bi-grid-3x3-gap text-primary fs-5"></i>
+        <h5 class="fw-bold mb-0">Confusion Matrix of the Held-Out Test Set</h5>
+    </div>
+    <div class="row g-4">
+        <div class="col-md-6">
+            <h6 class="fw-bold small mb-2">Document Type Model</h6>
+            <div class="small text-muted mb-2">
+                <span class="cm-swatch cm-zero"></span>0.00%
+                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
+                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
+                <span class="ms-2">(row-normalized %)</span>
+            </div>
+            {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0 small">Confusion matrix will appear after training.</p>{% endif %}
+        </div>
+        <div class="col-md-6">
+            <h6 class="fw-bold small mb-2">Project Category Model</h6>
+            <div class="small text-muted mb-2">
+                <span class="cm-swatch cm-zero"></span>0.00%
+                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
+                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
+                <span class="ms-2">(row-normalized %)</span>
+            </div>
+            {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0 small">Confusion matrix will appear after training.</p>{% endif %}
+        </div>
+    </div>
+</div>
+
+{# ===== Dataset & classifications — right below the confusion matrices ===== #}
 <div id="dataset-classifications" class="card p-4 mb-4">
     <div class="d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-database text-success fs-5"></i>
@@ -587,14 +617,6 @@
             {{ accuracy_computation(chart) }}
             {{ dataset_summary_table(dataset_profile) }}
             <hr>
-            <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
-            <div class="small text-muted mb-2">
-                <span class="cm-swatch cm-zero"></span>0.00%
-                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
-                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
-                <span class="ms-2">(row-normalized %)</span>
-            </div>
-            {% if chart and chart.confusion_matrix %}<div id="cmType"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
             {{ per_class_metrics(chart) }}
             {{ interpretation_insights(chart) }}
             {% else %}
@@ -644,14 +666,6 @@
             {{ accuracy_computation(chart_domain) }}
             {{ dataset_summary_table(domain_dataset_profile) }}
             <hr>
-            <h6 class="fw-bold mb-2">Confusion Matrix <span class="text-muted fw-normal small">(held-out test set)</span></h6>
-            <div class="small text-muted mb-2">
-                <span class="cm-swatch cm-zero"></span>0.00%
-                <span class="cm-swatch cm-light ms-3"></span>&gt;0–&lt;50%
-                <span class="cm-swatch cm-dark ms-3"></span>&ge;50–100%
-                <span class="ms-2">(row-normalized %)</span>
-            </div>
-            {% if chart_domain and chart_domain.confusion_matrix %}<div id="cmDomain"></div>{% else %}<p class="text-muted mb-0">Confusion matrix will appear after training.</p>{% endif %}
             {{ per_class_metrics(chart_domain) }}
             {{ interpretation_insights(chart_domain) }}
             {% else %}

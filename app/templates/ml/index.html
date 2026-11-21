@@ -154,7 +154,7 @@
         <thead class="table-light">
             <tr>
                 <th>Dataset</th>
-                <th class="text-center" style="width:78px;">#Features</th>
+                <th style="width:230px;">#Features</th>
                 <th class="text-center" style="width:78px;">#Samples</th>
                 <th class="text-center" style="width:78px;">#Classes</th>
             </tr>
@@ -164,7 +164,7 @@
             {% for c in profile.per_class %}
             <tr>
                 <td class="small">{{ c.label }}</td>
-                <td class="text-center small">—</td>
+                <td class="small">{{ c.description }}</td>
                 <td class="text-center small">{{ c.total }}</td>
                 <td class="text-center small">1</td>
             </tr>
@@ -196,7 +196,7 @@
 {% if profile.per_class %}
 <div class="small text-muted mb-2">
     Each row is one {{ profile.classes_label.lower()[:-1] if profile.classes_label else 'class' }} used to train this model;
-    #Features is the model-wide TF-IDF vocabulary (shown in the Total row).
+    #Features describes the text themes the model learns for that class (the Total row shows the model-wide TF-IDF vocabulary size).
 </div>
 {% endif %}
 {% if profile.features_from_artifact %}

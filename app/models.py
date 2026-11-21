@@ -46,6 +46,33 @@ DOCUMENT_CATEGORIES = [
     "Policy Brief",
 ]
 
+# Short, human-readable text themes for every ML class. Shown in the dataset
+# table so each row explains what kind of text the model learns for that label.
+CLASS_DESCRIPTIONS = {
+    # Document types
+    "Project Proposal": "Objectives, scope, budget, and sustainability plan",
+    "Activity Design": "Objectives, methodology, schedule, and expected outputs",
+    "Accomplishment Report": "Completed activities, delivered outputs, and targets",
+    "Monitoring and Evaluation Report": "Baseline data, progress, and recommendations",
+    "Memorandum of Agreement": "Partnership terms, responsibilities, and duration",
+    "Stakeholder Feedback": "Participant comments, suggestions, and satisfaction",
+    "Other": "Miscellaneous extension records outside the standard types",
+    "Work Plan": "Milestones, deliverables, assignments, and budget",
+    "Training Manual": "Facilitator guide, modules, exercises, and rubrics",
+    "Policy Brief": "Evidence, findings, and adoption recommendations",
+    # Project categories
+    "Community Outreach": "Community service, participation, and information drives",
+    "Livelihood": "Income skills, micro-enterprise, and starter support",
+    "Health": "Screening, nutrition, and health education programs",
+    "Education": "Literacy, school support, and continuing learning",
+    "Environment": "Conservation, tree planting, and waste management",
+    "Governance": "Local participation, councils, and policy engagement",
+    "Technology": "Digital literacy, computer training, and technical tools",
+    "Agriculture": "Farming, crops, livestock, and soil management",
+    "Water Sanitation": "Clean water, hygiene, and drainage facilities",
+    "Disaster Resilience": "Preparedness, evacuation, and risk reduction",
+}
+
 TRANSACTION_TYPES = ["Contribution", "Expense", "Allocation"]
 TRANSACTION_STATUSES = ["Pending", "Verified", "Approved", "Rejected"]
 

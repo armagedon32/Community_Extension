@@ -6,7 +6,9 @@ from flask_login import current_user, login_required
 from werkzeug.utils import secure_filename
 
 from app import db
-from app.models import DOCUMENT_CATEGORIES, PROJECT_CATEGORIES, Document, MLModel
+from app.models import (
+    CLASS_DESCRIPTIONS, DOCUMENT_CATEGORIES, PROJECT_CATEGORIES, Document, MLModel,
+)
 
 ml_bp = Blueprint("ml", __name__)
 
@@ -625,7 +627,13 @@ def _dataset_profile(model, view):
             total = details.get("total") or 0
             train = details.get("train") or 0
             test = details.get("test") or 0
-        per_class.append({"label": label, "total": total, "train": train, "test": test})
+        per_class.append({
+            "label": label,
+            "total": total,
+            "train": train,
+            "test": test,
+            "description": CLASS_DESCRIPTIONS.get(label, "Text samples for this class"),
+        })
 
     test_total = sum(c["test"] or 0 for c in per_class)
     for item in per_class:
